@@ -1,7 +1,5 @@
 name: Release Creation
 
-permissions: read-all|write-all
-
 on:
   release:
     types: [ published ]
