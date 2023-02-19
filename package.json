@@ -1,0 +1,36 @@
+{
+  "name": "advanced-tile-states",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "author": "Fantasy Computerworks (https://github.com/fantasycalendar)",
+  "contributors": [
+    "Wasp (https://github.com/haxxer)"
+  ],
+  "dependencies": {
+    "@typhonjs-fvtt/runtime": "^0.0.20",
+    "@typhonjs-fvtt/svelte-standard": "^0.0.16",
+    "svelte": "^3.52.0",
+    "svelte-toggle": "^3.1.0"
+  },
+  "devDependencies": {
+    "@league-of-foundry-developers/foundry-vtt-types": "^9.238.1",
+    "@typhonjs-config/eslint-config": "^0.3.0",
+    "@typhonjs-fvtt/eslint-config-foundry.js": "^0.8.0",
+    "eslint": "^8",
+    "svelte-dnd-action": "^0.9.18",
+    "svelte-preprocess": "^4.10.0",
+    "vite": "^3"
+  },
+  "browserslist": [
+    ">5%",
+    "not IE 11"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "eslint": "eslint ."
+  }
+}

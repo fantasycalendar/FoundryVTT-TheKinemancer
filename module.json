@@ -1,8 +1,8 @@
 {
-  "id": "module",
-  "title": "New Module",
+  "id": "animated-tile-states",
+  "title": "Animated Tile States",
   "description": "",
-  "version": "#{VERSION}#",
+  "version": "1.0.0",
   "library": "false",
   "manifestPlusVersion": "1.2.0",
   "compatibility": {
@@ -12,40 +12,30 @@
   },
   "authors": [
     {
-      "name": "The League of Extraordinary FVTT Developers",
-      "url": "https://github.com/League-of-Foundry-Developers",
-      "discord": "discordID#0001"
+      "name": "Wasp",
+      "url": "https://github.com/Haxxer",
+      "discord": "Wasp#2005"
     }
   ],
-  "relationships": {
-    "systems": [],
-    "requires": []
-  },
   "esmodules": [
-    "scripts/module.js"
-  ],
-  "scripts": [
-    "scripts/lib/lib.js"
+    "module.js"
   ],
   "styles": [
-    "styles/module.css"
+    "style.css"
   ],
-  "languages": [
-    {
-      "lang": "en",
-      "name": "English",
-      "path": "languages/en.json"
-    }
-  ],
-  "url": "#{URL}#",
-  "manifest": "#{MANIFEST}#",
-  "download": "#{DOWNLOAD}#",
-  "license": "LICENSE",
-  "readme": "README.md",
-  "media": [
-    {
-      "type": "icon",
-      "url": "https://avatars2.githubusercontent.com/u/71292812?s=400&u=ccdb4eeb7abf551ca8f314e5a9bfd0479a4d3d41&v=4"
-    }
-  ]
+  "relationships": {
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module"
+      }
+    ]
+  },
+  "socket": true,
+  "languages": [],
+  "url": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates",
+  "manifest": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/releases/latest/download/manifest.json",
+  "download": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/releases/latest/download/module.zip",
+  "readme": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/blob/master/README.md",
+  "bugs": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/issues"
 }

@@ -1,0 +1,195 @@
+.ats {
+
+  &-grid {
+    display: grid;
+    grid-template-columns: 25px 177px 75px 75px 200px 25px 25px;
+    gap: 3px;
+    margin-bottom: 3px;
+
+    a {
+      text-align: center;
+    }
+
+    > div {
+      display: flex;
+      padding: 0.25rem;
+      justify-content: center;
+      align-items: center;
+      min-height: 28px;
+
+      > * {
+        width: 100%;
+      }
+    }
+
+    .ats-column-flex {
+      flex-direction: column;
+    }
+  }
+
+  &-divider {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    margin: 0.25rem 0;
+    padding: 0.25rem 0;
+  }
+
+  &-action-button {
+    text-align: center;
+  }
+
+  input[type="text"], input[type="number"], select {
+    height: 20px;
+  }
+
+  input[type="checkbox"] {
+    height: 16px;
+    width: 16px;
+    margin: 0;
+  }
+
+  &-hud {
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    top: 100%;
+
+    .ats-hud-controls-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+
+    .ats-hud-select-container {
+
+      display: flex;
+      flex-direction: row;
+      width: auto;
+      height: 100%;
+      font-size: initial;
+      color: white;
+      pointer-events: all;
+
+      > select {
+        font-size: 0.8rem;
+        color: rgb(218, 218, 218);
+        border-radius: 8px;
+        height: 29px;
+        border: 0;
+
+        &:focus {
+          box-shadow: none;
+        }
+
+        > option {
+          background: rgba(0, 0, 0, 0.6);
+        }
+      }
+
+    }
+
+    .ats-hud-control-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 27px;
+      font-size: 1rem;
+      color: var(--color-text-light-3);
+      pointer-events: all;
+
+      &.active {
+        box-shadow: 0 0 10px inset rgb(255, 177, 0);
+      }
+    }
+
+    .ats-tile-ui-button {
+      position: relative;
+      height: 27px;
+      box-sizing: content-box;
+      flex: 0 0 27px;
+      margin-right: 0.5rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 15px var(--color-shadow-dark);
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+
+    .ats-sources-container {
+
+      pointer-events: all;
+      visibility: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      max-width: 300px;
+      align-items: center;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: rgb(218, 218, 218);
+      border-radius: 8px;
+      height: 29px;
+      border: 0;
+
+      &:focus {
+        box-shadow: none;
+      }
+
+      > option {
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+    }
+
+  }
+
+
+  &-config {
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+
+    nav {
+      margin-bottom: 0.25rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--item-piles-border-light-primary);
+    }
+
+    .form-group {
+      align-items: center;
+    }
+
+    section {
+      height: calc(100% - 70px);
+      max-height: calc(100% - 70px);
+      overflow-y: auto;
+
+      .tab {
+        padding: 0.25rem;
+      }
+    }
+
+    p {
+      flex: 0;
+      line-height: 14px;
+      font-size: var(--font-size-12);
+      color: var(--color-text-dark-secondary);
+      padding-right: 1rem;
+      margin-top: 0;
+      overflow-y: hidden;
+      margin-bottom: 0.25rem;
+    }
+
+    footer {
+      display: flex;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--item-piles-border-light-primary);
+    }
+  }
+
+}
