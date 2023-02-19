@@ -1,12 +1,13 @@
 name: Release Creation
 
+permissions: read-all|write-all
+
 on:
   release:
     types: [ published ]
 
 jobs:
   build:
-    permissions: read-all|write-all
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
