@@ -4,3 +4,4 @@ node_modules/*
 module.js
 module.js.map
 style.css
+!./src/module.js
