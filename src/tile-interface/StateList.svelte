@@ -30,6 +30,7 @@
       items[0].default = true;
     }
     items = items;
+    validateLastState();
   }
 
   const flipDurationMs = 300;
@@ -47,10 +48,18 @@
   function handleFinalize(e) {
     const { items: newItems, info: { source } } = e.detail;
     items = newItems;
+    validateLastState();
     // Ensure dragging is stopped on drag finish via pointer (mouse, touch)
     if (source === SOURCES.POINTER) {
       dragDisabled = true;
     }
+  }
+
+  function validateLastState() {
+    const lastState = items[items.length - 1];
+    lastState.behavior = lastState.behavior === CONSTANTS.BEHAVIORS.ONCE_NEXT
+      ? CONSTANTS.BEHAVIORS.STILL
+      : lastState.behavior;
   }
 
   function startDrag(e) {
@@ -128,14 +137,18 @@
 				</div>
 				<div class:ats-column-flex={state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}>
 					<select bind:value={state.behavior}>
-						{#each Object.entries(CONSTANTS.TRANSLATED_BEHAVIORS) as [value, localization]}
-							<option value={value}>{localization}</option>
+						{#each Object.entries(CONSTANTS.TRANSLATED_BEHAVIORS) as [value, localization], behaviorIndex}
+							<option value={value} disabled={index === items.length-1 && value === CONSTANTS.BEHAVIORS.ONCE_NEXT}>
+								{localization}
+							</option>
 						{/each}
 					</select>
 					{#if state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}
 						<select bind:value={state.nextState}>
 							{#each items as state, index (state.id)}
-								<option value={index}>{state.name}</option>
+								<option value={index}>
+									{state.name}
+								</option>
 							{/each}
 						</select>
 					{/if}

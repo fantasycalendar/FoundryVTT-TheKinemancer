@@ -16,10 +16,10 @@
 
   const tileDocument = application.options.tileDocument;
 
-  let image = getProperty(tileDocument, CONSTANTS.SOURCE_FLAG) ?? "";
-  let frames = getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? false;
-  let fps = getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25;
-  const statesStore = writable(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? []);
+  let image = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.SOURCE_FLAG) ?? "");
+  let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? false);
+  let fps = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25);
+  const statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? []));
   let errorsStore = writable([]);
 
   let form;
@@ -51,7 +51,6 @@
     if (errors.length) {
       return false;
     }
-    statesStore.set(states);
     tileDocument.update({
       [CONSTANTS.STATES_FLAG]: states,
       [CONSTANTS.FRAMES_FLAG]: frames,
@@ -121,7 +120,7 @@
 			<button on:click|once={requestSubmit} type="button">
 				<i class="far fa-save"></i> Save & Close
 			</button>
-			<button on:click|once={updateStates} type="button">
+			<button on:click={updateStates} type="button">
 				<i class="far fa-save"></i> Save
 			</button>
 			<button on:click|once={() => { application.close(); }} type="button">

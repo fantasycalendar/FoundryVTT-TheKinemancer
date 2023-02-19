@@ -43,7 +43,8 @@ export function getSceneDelegator() {
 }
 
 export function isRealNumber(n) {
-  return typeof n == 'number' && !isNaN(n) && isFinite(n);
+  const num = Number(n);
+  return typeof num == 'number' && !isNaN(num) && isFinite(num);
 }
 
 export async function getWildCardFiles(inFile) {

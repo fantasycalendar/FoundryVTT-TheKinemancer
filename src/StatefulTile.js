@@ -267,10 +267,11 @@ export default class StatefulTile {
 
   }
 
-  updateSelect(select) {
-    select.empty();
+  updateSelect() {
+    if (!this.select?.length) return;
+    this.select.empty();
     for (const [index, state] of this.flags.states.entries()) {
-      select.append(`<option ${index === this.currentState ? "selected" : ""} value="${index}">${state.name}</option>`)
+      this.select.append(`<option ${index === this.currentState ? "selected" : ""} value="${index}">${state.name}</option>`)
     }
   }
 
@@ -290,9 +291,7 @@ export default class StatefulTile {
     if (!statefulTile) return;
     statefulTile.flags = statefulTile.getFlags();
     statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
-    if (statefulTile.select?.length) {
-      statefulTile.updateSelect(statefulTile.select);
-    }
+    statefulTile.updateSelect();
     if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
       if (statefulTile.nextButton) {
         statefulTile.nextButton.removeClass("active");
@@ -416,7 +415,7 @@ export default class StatefulTile {
       ? Number(currState?.start) * this.fps
       : (currState?.start ?? 0);
 
-    switch (currState.start) {
+    switch (currStart) {
 
       case CONSTANTS.START.END:
         return this.duration;
@@ -435,11 +434,11 @@ export default class StatefulTile {
   determineEndTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
-    const currStart = lib.isRealNumber(currState?.start)
-      ? Number(currState?.start) * this.fps
-      : (currState?.start ?? this.duration);
+    const currEnd = lib.isRealNumber(currState?.end)
+      ? Number(currState?.end) * this.fps
+      : (currState?.end ?? this.duration);
 
-    switch (currState.end) {
+    switch (currEnd) {
 
       case CONSTANTS.END.END:
         return this.duration;
@@ -452,7 +451,7 @@ export default class StatefulTile {
 
     }
 
-    return currStart;
+    return currEnd;
 
   }
 
@@ -468,8 +467,8 @@ export default class StatefulTile {
 
     const currentState = this.flags.states[this.currentState];
 
-    const startTime = this.determineStartTime(this.currentState);
-    const endTime = this.determineEndTime(this.currentState);
+    const startTime = this.determineStartTime(this.currentState) ?? 0;
+    const endTime = this.determineEndTime(this.currentState) ?? this.duration;
 
     this.still = false;
     this.playing = true;
