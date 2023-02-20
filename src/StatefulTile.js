@@ -1,7 +1,7 @@
 import CONSTANTS from "./constants.js";
 import TileInterface from "./tile-interface/tile-interface.js";
 import * as lib from "./lib/lib.js";
-import { getSceneDelegator } from "./lib/lib.js";
+import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 
 const _managedStatefulTiles = new Map();
@@ -13,9 +13,8 @@ export default class StatefulTile {
   constructor(document, texture) {
     this.document = document;
     this.uuid = this.document.uuid;
-    this.delegationUuid = this.uuid.split(".")[1] + "_" + this.uuid.split(".")[3];
-    this.flags = {};
-    this.offset = this.flags?.offset || 0;
+    this.flags = new Flags(this.document);
+    this.offset = this.flags.offset;
     this.texture = texture;
     this.video = this.texture.baseTexture.resource.source;
     this.timeout = false;
@@ -26,11 +25,11 @@ export default class StatefulTile {
     this.ready = !!currentDelegator;
   }
 
-  static setAllReady(newDelegator) {
+  static setAllReady() {
     this.getAll().forEach(tile => {
       if (!tile.ready) {
         tile.ready = true;
-        tile.flags = tile.getFlags();
+        tile.flags.updateData();
         game.video.play(tile.video);
       }
     });
@@ -56,7 +55,7 @@ export default class StatefulTile {
         // Grab all tile's current state
         let updates = {};
         StatefulTile.getAll().forEach(tile => {
-          updates[CONSTANTS.DELEGATED_TILES_FLAG + "." + tile.delegationUuid] = tile.getFlags();
+          updates[CONSTANTS.DELEGATED_TILES_FLAG + "." + tile.delegationUuid] = tile.flags.getData();
         });
 
         currentDelegator = newDelegator;
@@ -127,6 +126,30 @@ export default class StatefulTile {
       StatefulTile.onUpdate(tileDoc, data);
     });
 
+    Hooks.on("canvasReady", () => {
+      setTimeout(() => {
+        for (const placeableTile of canvas.tiles.placeables) {
+          if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) continue;
+          const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
+          if (!tile) return;
+          if (game?.video && tile.video) {
+            game.video.play(tile.video);
+          }
+        }
+      }, 200);
+    })
+
+    const refreshDebounce = foundry.utils.debounce((placeableTile) => {
+      if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
+      const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
+      if (!tile) return;
+      if (game?.video && tile.video) {
+        game.video.play(tile.video);
+      }
+    }, 200);
+
+    Hooks.on("refreshTile", refreshDebounce);
+
   }
 
   static getAll() {
@@ -143,13 +166,9 @@ export default class StatefulTile {
     const newTile = new this(document, texture);
     _managedStatefulTiles.set(newTile.uuid, newTile);
     if (currentDelegator) {
-      newTile.flags = newTile.getFlags();
+      newTile.flags.updateData();
     }
     return newTile;
-  }
-
-  get fps() {
-    return this.flags?.frames ? 1000 / (this.flags?.fps || 25) : 1;
   }
 
   get duration() {
@@ -216,7 +235,7 @@ export default class StatefulTile {
     });
 
     for (const [index, state] of tile.flags.states.entries()) {
-      select.append(`<option ${index === tile.currentState ? "selected" : ""} value="${index}">${state.name}</option>`);
+      select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
     }
 
     const configButton = StatefulTile.makeHudButton("Configure Animated Tile States", "fas fa-cog");
@@ -234,7 +253,7 @@ export default class StatefulTile {
       });
     })
 
-    lib.getWildCardFiles(this.flags?.src).then(async (files) => {
+    lib.getWildCardFiles(this.flags.src).then(async (files) => {
       if (!files?.length) return;
       for (const file of files) {
         const fileNameParts = file.split("/");
@@ -271,25 +290,15 @@ export default class StatefulTile {
     if (!this.select?.length) return;
     this.select.empty();
     for (const [index, state] of this.flags.states.entries()) {
-      this.select.append(`<option ${index === this.currentState ? "selected" : ""} value="${index}">${state.name}</option>`)
+      this.select.append(`<option ${index === this.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`)
     }
-  }
-
-  getFlags() {
-    const documentFlags = getProperty(this.document, CONSTANTS.FLAGS);
-    if (currentDelegator && !currentDelegator.isGM) {
-      const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_TILES_FLAG + "." + this.delegationUuid);
-      if (userFlags?.updated && documentFlags?.updated && userFlags?.updated > documentFlags?.updated) {
-        return userFlags;
-      }
-    }
-    return documentFlags;
   }
 
   static onUpdate(tileDoc, changes, firstUpdate = false) {
     const statefulTile = StatefulTile.get(tileDoc.uuid);
     if (!statefulTile) return;
-    statefulTile.flags = statefulTile.getFlags();
+    statefulTile.flags.updateData();
+    Hooks.call("ats.updateState", tileDoc, statefulTile.flags.data, changes);
     if (!statefulTile.flags.states.length) {
       return this.tearDown(tileDoc.uuid);
     }
@@ -306,6 +315,37 @@ export default class StatefulTile {
       statefulTile.playing = false;
       game.video.play(statefulTile.video);
     }
+  }
+
+  static async changeTileState(uuid, { state = null, step = 1, queue = false } = {}) {
+    const tile = fromUuidSync(uuid);
+    if (!tile) return false;
+    const flags = new Flags(tile);
+    flags.updateData();
+    if (!flags.states.length) {
+      return false;
+    }
+    if (state !== null && !queue) {
+      if (!isRealNumber(state)) {
+        return false;
+      }
+      return tile.update({
+        [CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
+        [CONSTANTS.PREVIOUS_STATE_FLAG]: flags.currentStateIndex,
+        [CONSTANTS.CURRENT_STATE_FLAG]: state,
+        [CONSTANTS.QUEUED_STATE_FLAG]: flags.determineNextStateIndex()
+      });
+    }
+    if (!isRealNumber(step)) {
+      return false;
+    }
+    if (queue && !isRealNumber(state)) {
+      return false;
+    }
+    return tile.update({
+      [CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
+      [CONSTANTS.QUEUED_STATE_FLAG]: queue ? state : flags.getStateIndexFromSteps(step)
+    });
   }
 
   async update(data) {
@@ -328,55 +368,35 @@ export default class StatefulTile {
         const newKey = key.split(".");
         return [newKey[newKey.length - 1], value];
       }));
+
     return game.user.update({
       [`${CONSTANTS.DELEGATED_TILES_FLAG}.${this.document.parent.id}_${this.document.id}`]: deconstructedData
     });
   }
 
   async queueState(newState) {
-    return this.update({
+    const updates = {
       [CONSTANTS.QUEUED_STATE_FLAG]: newState
-    });
+    };
+    if (Hooks.call("ats.preUpdateQueuedState", this.document, this.flags.data, updates) === false) {
+      return;
+    }
+    return this.update(updates);
   }
 
   async updateState(stateIndex) {
-    return this.update({
-      [CONSTANTS.PREVIOUS_STATE_FLAG]: this.currentState,
+    const updates = {
+      [CONSTANTS.PREVIOUS_STATE_FLAG]: this.flags.currentStateIndex,
       [CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
-      [CONSTANTS.QUEUED_STATE_FLAG]: this.determineNextState(stateIndex)
-    });
-  }
-
-  determineNextState(stateIndex) {
-
-    const index = Math.max(0, Math.min(stateIndex, this.flags.states.length - 1));
-
-    const defaultIndex = this.flags.states.findIndex(state => state.default);
-
-    const currentState = this.flags.states[index];
-
-    switch (currentState.behavior) {
-
-      case CONSTANTS.BEHAVIORS.ONCE_NEXT:
-        return this.flags.states[index + 1] ? index + 1 : defaultIndex;
-
-      case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS:
-        return this.flags.states[index - 1] ? index - 1 : defaultIndex;
-
-      case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE:
-        return this.previousState;
-
-      case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
-        return this.flags.states[currentState.nextState] ? currentState.nextState : defaultIndex;
+      [CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex)
+    };
+    if (Hooks.call("ats.preUpdateCurrentState", this.document, this.flags.data, updates) === false) {
+      return;
     }
-
-    return index;
-
+    return this.update(updates);
   }
 
   async changeState({ state = null, step = 1, fast = false } = {}) {
-
-    const currentState = this.flags.states[this.currentState];
 
     if (this.nextButton) {
       this.nextButton.removeClass("active");
@@ -385,37 +405,25 @@ export default class StatefulTile {
       this.prevButton.removeClass("active");
     }
 
-    if (!fast && currentState.behavior !== CONSTANTS.BEHAVIORS.STILL) {
+    if (!fast && this.flags.currentState.behavior !== CONSTANTS.BEHAVIORS.STILL) {
       if (this.nextButton && this.prevButton && state === null) {
         this[step > 0 ? "nextButton" : "prevButton"].addClass("active");
       }
-      return this.queueState(state ?? this.currentState + step);
+      return this.queueState(state ?? this.flags.currentStateIndex + step);
     }
 
     clearTimeout(this.timeout);
     this.timeout = false;
 
-    return this.updateState(state ?? this.currentState + step);
+    return this.updateState(state ?? this.flags.currentStateIndex + step);
 
-  }
-
-  get previousState() {
-    return Math.max(0, Math.min(this.flags.previousState ?? this.flags.currentState, this.flags.states.length - 1));
-  }
-
-  get currentState() {
-    return Math.max(0, Math.min(this.flags.currentState, this.flags.states.length - 1));
-  }
-
-  get queuedState() {
-    return this.flags.queuedState > -1 ? this.flags.queuedState : null;
   }
 
   determineStartTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
     const currStart = lib.isRealNumber(currState?.start)
-      ? Number(currState?.start) * this.fps
+      ? Number(currState?.start) * this.flags.fps
       : (currState?.start ?? 0);
 
     switch (currStart) {
@@ -438,7 +446,7 @@ export default class StatefulTile {
 
     const currState = this.flags.states?.[stateIndex];
     const currEnd = lib.isRealNumber(currState?.end)
-      ? Number(currState?.end) * this.fps
+      ? Number(currState?.end) * this.flags.fps
       : (currState?.end ?? this.duration);
 
     switch (currEnd) {
@@ -466,18 +474,16 @@ export default class StatefulTile {
       currentTime: 0
     };
 
-    if (!this.flags?.states || !this.document?.object) return;
+    if (!this.flags?.states?.length || !this.document?.object) return;
 
-    const currentState = this.flags.states[this.currentState];
-
-    const startTime = this.determineStartTime(this.currentState) ?? 0;
-    const endTime = this.determineEndTime(this.currentState) ?? this.duration;
+    const startTime = this.determineStartTime(this.flags.currentStateIndex) ?? 0;
+    const endTime = this.determineEndTime(this.flags.currentStateIndex) ?? this.duration;
 
     this.still = false;
     this.playing = true;
     this.texture.update();
 
-    switch (currentState.behavior) {
+    switch (this.flags.currentState.behavior) {
 
       case CONSTANTS.BEHAVIORS.STILL:
         return this.handleStillBehavior(startTime, endTime);
@@ -527,8 +533,8 @@ export default class StatefulTile {
 
     this.setTimeout(() => {
       this.playing = false;
-      if (this.queuedState !== null && this.queuedState !== this.currentState) {
-        return this.updateState(this.queuedState);
+      if (this.flags.queuedStateIndexIsDifferent) {
+        return this.updateState(this.flags.queuedStateIndex);
       }
       game.video.play(this.video);
     }, loopDuration - offsetLoopTime);
@@ -544,9 +550,9 @@ export default class StatefulTile {
   async handleOnceBehavior(startTime, endTime) {
 
     this.setTimeout(async () => {
-      let queuedState = this.queuedState;
+      let queuedState = this.flags.queuedStateIndex;
       if (queuedState === null) {
-        queuedState = this.determineNextState(this.currentState);
+        queuedState = this.flags.determineNextStateIndex();
       }
       this.playing = false;
       this.video.pause();
@@ -560,6 +566,119 @@ export default class StatefulTile {
       loop: false,
       offset: startTime / 1000
     }
+
+  }
+
+}
+
+class Flags {
+
+  constructor(doc) {
+    this.doc = doc;
+    this.uuid = doc.uuid;
+    this.delegationUuid = this.uuid.split(".")[1] + "_" + this.uuid.split(".")[3];
+    this.data = {};
+  }
+
+  get src() {
+    return this.data?.src ?? "";
+  }
+
+  get states() {
+    return this.data?.states ?? [];
+  }
+
+  get offset() {
+    return this.data?.offset ?? 0;
+  }
+
+  get updated() {
+    return this.data?.updated ?? 0;
+  }
+
+  get previousState() {
+    return this.states[this.previousStateIndex];
+  }
+
+  get previousStateIndex() {
+    return Math.max(0, Math.min(this.data.previousState ?? this.data.currentState, this.data.states.length - 1));
+  }
+
+  get currentState() {
+    return this.states[this.currentStateIndex];
+  }
+
+  get currentStateIndex() {
+    return Math.max(0, Math.min(this.data.currentState, this.data.states.length - 1));
+  }
+
+  get queuedState() {
+    return this.states[this.queuedStateIndex];
+  }
+
+  get queuedStateIndex() {
+    return this.data.queuedState > -1 ? this.data.queuedState : null;
+  }
+
+  get fps() {
+    return this.data?.frames ? 1000 / (this.data?.fps || 25) : 1;
+  }
+
+  get queuedStateIndexIsDifferent() {
+    return this.queuedStateIndex !== null && this.queuedStateIndex !== this.currentStateIndex;
+  }
+
+  getData() {
+    const documentFlags = getProperty(this.doc, CONSTANTS.FLAGS);
+    if (currentDelegator && !currentDelegator.isGM) {
+      const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_TILES_FLAG + "." + this.delegationUuid);
+      if (userFlags?.updated && documentFlags?.updated && userFlags?.updated > documentFlags?.updated) {
+        return userFlags;
+      }
+    }
+    return documentFlags;
+  }
+
+  updateData() {
+    this.data = this.getData();
+  }
+
+  getStateById(id) {
+    const index = this.states.findIndex(state => state.id === id);
+    return index >= 0 ? index : false;
+  }
+
+  getStateIndexFromSteps(steps = 1) {
+    return Math.max(0, Math.min(this.currentStateIndex + steps, this.data.states.length - 1));
+  }
+
+  determineNextStateIndex(stateIndex = null) {
+
+    stateIndex ??= this.currentStateIndex;
+
+    const state = this.states[stateIndex];
+
+    const index = Math.max(0, Math.min(stateIndex, this.states.length - 1));
+
+    const defaultIndex = this.states.findIndex(s => s.default);
+
+    switch (state.behavior) {
+
+      case CONSTANTS.BEHAVIORS.ONCE_NEXT:
+        return this.states[index + 1] ? index + 1 : defaultIndex;
+
+      case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS:
+        return this.states[index - 1] ? index - 1 : defaultIndex;
+
+      case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE:
+        return this.previousStateIndex;
+
+      case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
+        const nextIndex = this.getStateById(state.nextState);
+        return nextIndex >= 0 ? nextIndex : defaultIndex;
+    }
+
+    return index;
 
   }
 

@@ -24,7 +24,7 @@ const CONSTANTS = {
 CONSTANTS.SOCKET_NAME = `module.${CONSTANTS.MODULE_NAME}`;
 
 CONSTANTS.FLAG_KEYS = {
-  PREVIOUS_STATE_FLAG: "previousState",
+  PREVIOUS_STATE: "previousState",
   CURRENT_STATE: "currentState",
   QUEUED_STATE: "queuedState",
   UPDATED: "updated",

@@ -32,27 +32,53 @@ Hooks.once('ready', async function () {
       });
     }
   });
+
+  game.ats = {
+    updateState: (uuid, options) => StatefulTile.changeTileState(uuid, options)
+  };
+
+
 });
 
+
+Hooks.on('renderFilePicker', (filePicker, html) => {
+  if (game.modules.get("animation-preview")?.active) return;
+  html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, img) => {
+    const $img = $(img);
+    const $parent = $img.closest('[data-path]');
+    const path = $parent.data('path');
+    const width = $img.attr('width');
+    const height = $img.attr('height');
+    const $video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
+    $img.replaceWith($video);
+
+    const video = $video.get(0);
+    let playTimeout = null;
+    $parent.addClass('video-parent -loading');
+
+    video.addEventListener('loadeddata', () => {
+      $parent.removeClass('-loading');
+    }, false);
+
+    $parent.hover(
+      () => {
+        playTimeout = setTimeout(() => {
+          if (!video.src) video.src = path;
+          video.currentTime = 0;
+          video.play().catch(e => console.error(e));
+        }, !!video.src ? 0 : 750);
+      },
+      () => {
+        clearTimeout(playTimeout);
+        video.pause();
+        video.currentTime = 0;
+      },
+    );
+  });
+});
+
+
 function registerLibwrappers() {
-
-  Hooks.on("canvasReady", () => {
-    for (const tile of canvas.tiles.placeables) {
-      if (!tile.isVideo || !getProperty(tile.document, CONSTANTS.STATES_FLAG)?.length) return;
-      StatefulTile.make(tile.document, tile.texture);
-    }
-  })
-
-  const refreshDebounce = foundry.utils.debounce((placeableTile) => {
-    if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
-    const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
-    if (!tile) return;
-    if (game?.video && tile.video) {
-      game.video.play(tile.video);
-    }
-  }, 100);
-
-  Hooks.on("refreshTile", refreshDebounce);
 
   libWrapper.register(CONSTANTS.MODULE_NAME, 'Tile.prototype._destroy', function (wrapped) {
     if (this.isVideo) {
@@ -80,3 +106,4 @@ function registerLibwrappers() {
   );
 
 }
+

@@ -30,7 +30,6 @@
       items[0].default = true;
     }
     items = items;
-    validateLastState();
   }
 
   const flipDurationMs = 300;
@@ -48,19 +47,10 @@
   function handleFinalize(e) {
     const { items: newItems, info: { source } } = e.detail;
     items = newItems;
-    validateLastState();
     // Ensure dragging is stopped on drag finish via pointer (mouse, touch)
     if (source === SOURCES.POINTER) {
       dragDisabled = true;
     }
-  }
-
-  function validateLastState() {
-    if (!items.length) return;
-    const lastState = items[items.length - 1];
-    lastState.behavior = lastState.behavior === CONSTANTS.BEHAVIORS.ONCE_NEXT
-      ? CONSTANTS.BEHAVIORS.STILL
-      : lastState.behavior;
   }
 
   function startDrag(e) {
@@ -112,25 +102,22 @@
 					<input type="text" bind:value={state.name} autocomplete="false">
 				</div>
 				<div>
-					<input list={state.id - "-start-list"}
+					<input list={state.id + "-start-list"}
 								 type="text" bind:value={state.start}
 								 autocomplete="false"
 					/>
-					<datalist id={state.id - "-start-list"}>
-						<option></option>
+					<datalist id={state.id + "-start-list"}>
 						<option>prev</option>
 						<option>end</option>
 						<option>mid</option>
 					</datalist>
 				</div>
 				<div>
-					<input list={state.id - "-end-list"}
+					<input list={state.id + "-end-list"}
 								 type="text" bind:value={state.end}
-								 disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL}
 								 autocomplete="false"
 					/>
-					<datalist id={state.id - "-end-list"}>
-						<option></option>
+					<datalist id={state.id + "-end-list"}>
 						<option>next</option>
 						<option>end</option>
 						<option>mid</option>
@@ -139,16 +126,16 @@
 				<div class:ats-column-flex={state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}>
 					<select bind:value={state.behavior}>
 						{#each Object.entries(CONSTANTS.TRANSLATED_BEHAVIORS) as [value, localization], behaviorIndex}
-							<option value={value} disabled={index === items.length-1 && value === CONSTANTS.BEHAVIORS.ONCE_NEXT}>
+							<option value={value}>
 								{localization}
 							</option>
 						{/each}
 					</select>
 					{#if state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}
 						<select bind:value={state.nextState}>
-							{#each items as state, index (state.id)}
-								<option value={index}>
-									{state.name}
+							{#each items as innerState (innerState.id)}
+								<option value={innerState.id}>
+									{innerState.name}
 								</option>
 							{/each}
 						</select>
@@ -188,6 +175,10 @@
     &:nth-child(odd) {
       background-color: rgba(21, 20, 18, 0.1);
     }
+  }
+
+  section {
+    margin-bottom: 0.5rem;
   }
 
 </style>

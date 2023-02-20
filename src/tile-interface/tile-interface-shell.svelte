@@ -31,7 +31,7 @@
   function updateStates() {
     const states = get(statesStore);
     const errors = [];
-    for (const state of states) {
+    for (const [index, state] of states.entries()) {
       if (!(isRealNumber(state.start) || Object.values(CONSTANTS.START).some(val => val === state.start))) {
         if (state.behavior === CONSTANTS.BEHAVIORS.STILL) {
           state.start = "";
@@ -45,6 +45,12 @@
         } else {
           errors.push(`State "${state.name}" has an invalid value in its "end" setting!`)
         }
+      }
+      if ((state.behavior === CONSTANTS.BEHAVIORS.ONCE_PREVIOUS && index === 0)) {
+        errors.push(`State "${state.name}" cannot have "once, previous" behavior because it is the first state!`)
+      }
+      if ((state.behavior === CONSTANTS.BEHAVIORS.ONCE_NEXT && index === states.length - 1)) {
+        errors.push(`State "${state.name}" cannot have "once, next" behavior because it is the last state!`)
       }
     }
     errorsStore.set(errors);
