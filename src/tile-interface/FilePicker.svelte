@@ -1,6 +1,6 @@
 <script>
   export let value;
-  export let type;
+  export let type = "media";
   export let placeholder = "";
   export let showImage = false;
   export let showInput = true;

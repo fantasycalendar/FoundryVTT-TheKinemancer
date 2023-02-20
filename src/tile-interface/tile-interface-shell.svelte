@@ -19,7 +19,7 @@
   let image = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.SOURCE_FLAG) ?? "");
   let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? false);
   let fps = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25);
-  const statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? []));
+  let statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? []));
   let errorsStore = writable([]);
 
   let form;
@@ -69,6 +69,24 @@
 
   function closeApp() {
     application.close();
+  }
+
+  export function exportData() {
+    return {
+      states: get(statesStore),
+      image,
+      frames,
+      fps,
+    }
+  }
+
+  export function importData(importedData) {
+    if (!importedData?.states?.length) return false;
+    statesStore.set(importedData.states);
+    image = importedData.image;
+    frames = importedData.frames;
+    fps = importedData.fps;
+    return true;
   }
 
 </script>

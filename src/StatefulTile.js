@@ -290,6 +290,9 @@ export default class StatefulTile {
     const statefulTile = StatefulTile.get(tileDoc.uuid);
     if (!statefulTile) return;
     statefulTile.flags = statefulTile.getFlags();
+    if (!statefulTile.flags.states.length) {
+      return this.tearDown(tileDoc.uuid);
+    }
     statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
     statefulTile.updateSelect();
     if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
@@ -472,6 +475,7 @@ export default class StatefulTile {
 
     this.still = false;
     this.playing = true;
+    this.texture.update();
 
     switch (currentState.behavior) {
 

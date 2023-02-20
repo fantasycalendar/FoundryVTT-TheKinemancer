@@ -36,18 +36,20 @@ Hooks.once('ready', async function () {
 
 function registerLibwrappers() {
 
+  Hooks.on("canvasReady", () => {
+    for (const tile of canvas.tiles.placeables) {
+      if (!tile.isVideo || !getProperty(tile.document, CONSTANTS.STATES_FLAG)?.length) return;
+      StatefulTile.make(tile.document, tile.texture);
+    }
+  })
+
   const refreshDebounce = foundry.utils.debounce((placeableTile) => {
-
-    if (!placeableTile.isVideo) return;
-
+    if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
     const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
-
     if (!tile) return;
-
-    if (game?.video && tile.video && !tile.playing) {
+    if (game?.video && tile.video) {
       game.video.play(tile.video);
     }
-
   }, 100);
 
   Hooks.on("refreshTile", refreshDebounce);
@@ -66,11 +68,9 @@ function registerLibwrappers() {
       for (const tile of StatefulTile.getAll().values()) {
         if (video === tile.video) {
           if (this.locked || tile.destroyed || tile.playing || tile.still) return;
+          if (window.document.hidden) return video.pause();
           const newOptions = await tile.getVideoPlaybackState();
           if (!newOptions) return;
-          if (window.document.hidden) {
-            return video.pause();
-          }
           return wrapped(video, newOptions);
         }
       }

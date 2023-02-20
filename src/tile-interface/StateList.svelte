@@ -56,6 +56,7 @@
   }
 
   function validateLastState() {
+    if (!items.length) return;
     const lastState = items[items.length - 1];
     lastState.behavior = lastState.behavior === CONSTANTS.BEHAVIORS.ONCE_NEXT
       ? CONSTANTS.BEHAVIORS.STILL

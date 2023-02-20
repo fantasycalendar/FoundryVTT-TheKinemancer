@@ -1,5 +1,8 @@
 import { SvelteApplication } from '@typhonjs-fvtt/runtime/svelte/application';
 import TileInterfaceShell from "./tile-interface-shell.svelte";
+import { get } from "svelte/store";
+
+let copiedData = false;
 
 export default class TileInterface extends SvelteApplication {
 
@@ -56,6 +59,90 @@ export default class TileInterface extends SvelteApplication {
     const existingApp = this.getActiveApp(tileId);
     if (!existingApp || existingApp.options?.parentApp !== app) return;
     return existingApp.close();
+  }
+
+  _getHeaderButtons() {
+
+    const buttons = super._getHeaderButtons();
+
+    buttons.unshift({
+      icon: 'fas fa-file-import',
+      title: "Import",
+      label: "Import",
+
+      onclick: async () => {
+
+        const input = document.createElement('input');
+        input.type = 'file';
+
+        input.onchange = e => {
+          input.remove();
+
+          const file = e.target.files[0];
+
+          const reader = new FileReader();
+          reader.addEventListener('load', async () => {
+            try {
+              const stateData = JSON.parse(reader.result);
+              const success = this.svelte.applicationShell.importData(stateData);
+              if (success) {
+                ui.notifications.notify("Animated Tile States | Successfully imported tile state data")
+              } else {
+                ui.notifications.error("Animated Tile States | Could not determine states in this file!")
+              }
+            } catch (err) {
+              ui.notifications.error("Animated Tile States | Something went wrong importing this file!\n" + err);
+            }
+          });
+
+          reader.readAsText(file);
+
+        }
+
+        input.click();
+      }
+    });
+
+    buttons.unshift({
+      icon: 'fas fa-file-export',
+      title: "Export",
+      label: "Export",
+
+      onclick: async () => {
+        saveDataToFile(
+          JSON.stringify(this.svelte.applicationShell.exportData()),
+          "text/json",
+          "animated-tile-state.json"
+        )
+      }
+    });
+
+    buttons.unshift({
+      icon: 'fas fa-copy',
+      title: "Copy",
+      label: "Copy",
+
+      onclick: async () => {
+        copiedData = this.svelte.applicationShell.exportData();
+        ui.notifications.notify("Animated Tile States | Copied tile state data")
+      }
+    });
+
+    buttons.unshift({
+      icon: 'fas fa-paste',
+      title: "Paste",
+      label: "Paste",
+
+      onclick: async () => {
+        if (this.svelte.applicationShell.importData(copiedData)) {
+          ui.notifications.notify("Animated Tile States | Pasted tile state data")
+        } else {
+          ui.notifications.notify("Animated Tile States | You haven't copied any animated tile state data!")
+        }
+      }
+    });
+
+    return buttons;
   }
 
 }
