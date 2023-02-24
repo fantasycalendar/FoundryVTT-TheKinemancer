@@ -3,9 +3,13 @@
   import CONSTANTS from "../constants.js";
   import { dndzone, SOURCES, TRIGGERS } from 'svelte-dnd-action';
   import { createEventDispatcher } from "svelte";
+  import { isRealNumber } from "../lib/lib.js";
+  import SelectState from "./SelectState.svelte";
+  import Select from "./Select.svelte";
 
   export let items;
   export let errors;
+  export let duration;
 
   const dispatch = createEventDispatcher();
 
@@ -65,7 +69,6 @@
 
 </script>
 
-
 <div class="ats-parent-container">
 
 	<div class="ats-grid">
@@ -102,35 +105,90 @@
 					<input type="text" bind:value={state.name} autocomplete="false">
 				</div>
 				<div>
-					<input list={state.id + "-start-list"}
-								 type="text" bind:value={state.start}
-								 autocomplete="false"
-					/>
-					<datalist id={state.id + "-start-list"}>
-						<option>prev</option>
-						<option>end</option>
-						<option>mid</option>
-					</datalist>
+					<Select {index}
+									style="position: relative;"
+									items={Object.values(CONSTANTS.START).map(value => {
+										return {
+											props: {
+												text: value
+											},
+											onPress: (index) => {
+												items[index].start = value;
+											}
+										}
+									})}
+					>
+						<input type="text"
+									 style="width:100%;"
+									 bind:value={state.start}
+									 on:pointerup={(e) => { setTimeout(() => e.target.focus()) }}
+									 on:change={() => {
+							 if(isRealNumber(state.start) && Number(state.start) > duration){
+								 state.start = duration.toString();
+							 }
+						 }}
+						/>
+						<div style="position:absolute; right: 5px; top:2px; pointer-events: none;">
+							<i class="fas fa-caret-down"></i>
+						</div>
+					</Select>
 				</div>
 				<div>
-					<input list={state.id + "-end-list"}
-								 type="text" bind:value={state.end}
-								 autocomplete="false"
-					/>
-					<datalist id={state.id + "-end-list"}>
-						<option>next</option>
-						<option>end</option>
-						<option>mid</option>
-					</datalist>
+					<Select {index}
+									style="position: relative;"
+									disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL}
+									items={Object.values(CONSTANTS.END).map(value => {
+										return {
+											props: {
+												text: value
+											},
+											onPress: (index) => {
+												items[index].end = value;
+											}
+										}
+									})}
+					>
+						<input type="text"
+									 style="width:100%;"
+									 bind:value={state.end}
+									 disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL}
+									 on:pointerup={(e) => { setTimeout(() => e.target.focus()) }}
+									 on:change={() => {
+							 if(isRealNumber(state.end) && Number(state.end) > duration){
+								 state.end = duration.toString();
+							 }
+						 }}
+						/>
+						<div style="position:absolute; right: 5px; top:2px; pointer-events: none;">
+							<i class="fas fa-caret-down"></i>
+						</div>
+					</Select>
 				</div>
 				<div class:ats-column-flex={state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}>
-					<select bind:value={state.behavior}>
+					<Select {index} items={Object.entries(CONSTANTS.TRANSLATED_BEHAVIORS).map(entry => {
+						return {
+							props: {
+								text: CONSTANTS.TRANSLATED_BEHAVIORS[entry[0]],
+								color: CONSTANTS.BEHAVIOR_COLOR[entry[0]]
+							},
+							onPress: (index) => {
+								items[index].behavior = entry[0];
+							}
+						}
+					})}>
+						<SelectState
+							text={CONSTANTS.TRANSLATED_BEHAVIORS[state.behavior]}
+							color={CONSTANTS.BEHAVIOR_COLOR[state.behavior]}
+							primary
+						/>
+					</Select>
+					<!--<select class={CONSTANTS.BEHAVIOR_CLASS[state.behavior]} bind:value={state.behavior}>
 						{#each Object.entries(CONSTANTS.TRANSLATED_BEHAVIORS) as [value, localization], behaviorIndex}
 							<option value={value}>
 								{localization}
 							</option>
 						{/each}
-					</select>
+					</select>-->
 					{#if state.behavior === CONSTANTS.BEHAVIORS.ONCE_SPECIFIC}
 						<select bind:value={state.nextState}>
 							{#each items as innerState (innerState.id)}
@@ -173,7 +231,7 @@
     }
 
     &:nth-child(odd) {
-      background-color: rgba(21, 20, 18, 0.1);
+      background-color: rgba(21, 20, 18, 0.05);
     }
   }
 

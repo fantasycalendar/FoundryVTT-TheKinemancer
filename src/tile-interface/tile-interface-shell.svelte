@@ -8,18 +8,29 @@
   import { get, writable } from "svelte/store";
   import FilePicker from "./FilePicker.svelte";
   import Toggle from "svelte-toggle";
-  import { isRealNumber } from "../lib/lib.js";
+  import { getVideoDuration, validateStates } from "../lib/lib.js";
+  import { TJSDocument } from "@typhonjs-fvtt/runtime/svelte/store";
 
   export let elementRoot;
 
-  const { application } = getContext("external")
+  const { application } = getContext("#external")
 
   const tileDocument = application.options.tileDocument;
 
+  const doc = new TJSDocument(tileDocument);
+
   let image = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.SOURCE_FLAG) ?? "");
-  let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? false);
+  let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? true);
   let fps = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25);
-  let statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? []));
+  let statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? [{
+    id: randomID(),
+    name: "New State",
+    start: 0,
+    end: "",
+    behavior: CONSTANTS.BEHAVIORS.STILL,
+    nextState: null,
+    default: true
+  }]));
   let errorsStore = writable([]);
 
   let form;
@@ -28,33 +39,41 @@
     form.requestSubmit();
   }
 
+  let isValid = true;
+  const updateErrors = foundry.utils.debounce((errors) => {
+    errorsStore.set(errors);
+  }, 250)
+
+  let actualDuration = null;
+  getVideoDuration(tileDocument.texture.src).then((videoDuration) => {
+    actualDuration = videoDuration;
+  });
+  $: {
+    $doc;
+    const { data } = doc.updateOptions;
+    const videoSrc = getProperty(data, "texture.src");
+    if (videoSrc) {
+      getVideoDuration(videoSrc).then((videoDuration) => {
+        actualDuration = videoDuration;
+      });
+    }
+  }
+
+  $: duration = actualDuration * (frames ? 1000 / (fps || 25) : 1000)
+
+  $: {
+    const errors = validateStates($statesStore);
+    isValid = !errors.length;
+    if (isValid) {
+      errorsStore.set([]);
+    } else {
+      updateErrors(errors);
+    }
+  }
+
   function updateStates() {
     const states = get(statesStore);
-    const errors = [];
-    for (const [index, state] of states.entries()) {
-      if (!(isRealNumber(state.start) || Object.values(CONSTANTS.START).some(val => val === state.start))) {
-        if (state.behavior === CONSTANTS.BEHAVIORS.STILL) {
-          state.start = "";
-        } else {
-          errors.push(`State "${state.name}" has an invalid value in its "start" setting!`)
-        }
-      }
-      if (!(isRealNumber(state.end) || Object.values(CONSTANTS.END).some(val => val === state.end))) {
-        if (state.behavior === CONSTANTS.BEHAVIORS.STILL) {
-          state.end = "";
-        } else {
-          errors.push(`State "${state.name}" has an invalid value in its "end" setting!`)
-        }
-      }
-      if ((state.behavior === CONSTANTS.BEHAVIORS.ONCE_PREVIOUS && index === 0)) {
-        errors.push(`State "${state.name}" cannot have "once, previous" behavior because it is the first state!`)
-      }
-      if ((state.behavior === CONSTANTS.BEHAVIORS.ONCE_NEXT && index === states.length - 1)) {
-        errors.push(`State "${state.name}" cannot have "once, next" behavior because it is the last state!`)
-      }
-    }
-    errorsStore.set(errors);
-    if (errors.length) {
+    if (!isValid) {
       return false;
     }
     tileDocument.update({
@@ -78,20 +97,22 @@
   }
 
   export function exportData() {
+    const states = get(statesStore);
     return {
-      states: get(statesStore),
-      image,
-      frames,
-      fps,
+      [CONSTANTS.STATES_FLAG]: states,
+      [CONSTANTS.FRAMES_FLAG]: frames,
+      [CONSTANTS.SOURCE_FLAG]: image,
+      [CONSTANTS.FPS_FLAG]: fps,
+      [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(tileDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1)
     }
   }
 
   export function importData(importedData) {
     if (!importedData?.states?.length) return false;
-    statesStore.set(importedData.states);
-    image = importedData.image;
-    frames = importedData.frames;
-    fps = importedData.fps;
+    statesStore.set(getProperty(importedData, CONSTANTS.STATES_FLAG));
+    frames = getProperty(importedData, CONSTANTS.FRAMES_FLAG)
+    image = getProperty(importedData, CONSTANTS.SOURCE_FLAG)
+    fps = getProperty(importedData, CONSTANTS.FPS_FLAG)
     return true;
   }
 
@@ -114,23 +135,34 @@
 
 			</div>
 
-			<div style="display: flex; align-items: center">
+			<div style="display: flex; align-items: center; flex-direction: column;">
 
-				<div style="min-width: 125px; margin-right:1rem;">
-					<Toggle
-						bind:toggled={frames}
-						label="Milliseconds or Frames"
-						off="Milliseconds"
-						on="Frames"
-					/>
+				<div style="display: flex; align-items: center;" class="ats-bottom-divider">
+
+					<div style="min-width: 125px; margin-right:1rem;">
+						<Toggle
+							bind:toggled={frames}
+							label="Milliseconds or Frames"
+							off="Milliseconds"
+							on="Frames"
+						/>
+					</div>
+
+					<div style="width: 40px;">
+						<label
+							style="flex: 1 0 auto; margin-right: 0.5rem; display: block; margin-bottom: 0.25rem; font-size: 0.75rem;">FPS</label>
+						<input style="flex: 0 1 auto;" type="number" disabled={!frames} bind:value={fps}/>
+					</div>
+
 				</div>
 
-				<div style="width: 40px;">
-					<label
-						style="flex: 1 0 auto; margin-right: 0.5rem; display: block; margin-bottom: 0.25rem; font-size: 0.75rem;">FPS</label>
-					<input style="flex: 0 1 auto;" type="number" disabled={!frames} bind:value={fps}/>
-				</div>
+				<div>
 
+					{#if duration}
+						This video {frames ? "has" : "is"} <strong>{duration}</strong> {frames ? "frames" : "ms long"}
+					{/if}
+
+				</div>
 
 			</div>
 
@@ -138,13 +170,13 @@
 
 		<div class="ats-divider"></div>
 
-		<StateList bind:items={$statesStore} errors={$errorsStore}/>
+		<StateList bind:items={$statesStore} errors={$errorsStore} {duration}/>
 
 		<footer>
-			<button on:click|once={requestSubmit} type="button">
+			<button on:click|once={requestSubmit} disabled={!isValid} type="button">
 				<i class="far fa-save"></i> Save & Close
 			</button>
-			<button on:click={updateStates} type="button">
+			<button on:click={updateStates} disabled={!isValid} type="button">
 				<i class="far fa-save"></i> Save
 			</button>
 			<button on:click|once={() => { application.close(); }} type="button">

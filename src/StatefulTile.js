@@ -1,9 +1,11 @@
 import CONSTANTS from "./constants.js";
-import TileInterface from "./tile-interface/tile-interface.js";
+import { copiedData, TileInterface } from "./tile-interface/tile-interface.js";
 import * as lib from "./lib/lib.js";
 import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
+import { get } from "svelte/store";
 
+const tileHudMap = new Map();
 const _managedStatefulTiles = new Map();
 let currentDelegator = false;
 let delegateDebounce = false;
@@ -116,6 +118,7 @@ export default class StatefulTile {
     });
 
     Hooks.on("renderTileHUD", (app, html) => {
+      tileHudMap.set(app.object.document.uuid, app);
       const tile = StatefulTile.get(app.object.document.uuid);
       if (!tile) return;
       tile.renderTileHUD(app, html);
@@ -162,6 +165,9 @@ export default class StatefulTile {
 
   static make(document, texture) {
     const existingTile = this.get(document.uuid);
+    if (!existingTile?.app || existingTile?.app?._state <= Application.RENDER_STATES.CLOSED) {
+
+    }
     if (existingTile) return existingTile;
     const newTile = new this(document, texture);
     _managedStatefulTiles.set(newTile.uuid, newTile);
@@ -202,6 +208,14 @@ export default class StatefulTile {
 
     const controlsContainer = $("<div class='ats-hud-controls-container'></div>")
 
+    const configButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Configure Tile States">
+      <img src="${CONSTANTS.MODULE_ICON}"/>
+    </div>`);
+
+    configButton.on('pointerdown', () => {
+      TileInterface.show(tile.document);
+    });
+
     const fastPrevButton = StatefulTile.makeHudButton("Go To Previous State", "fas fa-backward-fast");
     const prevButton = StatefulTile.makeHudButton("Queue Previous State", "fas fa-backward-step");
     const nextButton = StatefulTile.makeHudButton("Queue Next State", "fas fa-step-forward");
@@ -223,26 +237,34 @@ export default class StatefulTile {
       tile.changeState({ fast: true });
     });
 
+    const copyButton = StatefulTile.makeHudButton("Copy", "fas fa-copy");
+    const pasteButton = StatefulTile.makeHudButton("Paste", "fas fa-paste");
+
+    copyButton.on('pointerdown', () => {
+      tile.flags.copyData();
+    });
+
+    pasteButton.on('pointerdown', () => {
+      tile.flags.pasteData();
+    });
+
+    controlsContainer.append(configButton);
     controlsContainer.append(fastPrevButton)
     controlsContainer.append(prevButton)
     controlsContainer.append(nextButton)
     controlsContainer.append(fastNextButton)
+    controlsContainer.append(copyButton)
+    controlsContainer.append(pasteButton)
 
     const selectContainer = $("<div class='ats-hud-select-container'></div>");
     const select = $("<select class='ats-tile-ui-button'></select>");
     select.on('change', function () {
-      tile.changeState({ state: Number($(this).val()) });
+      tile.changeState({ state: Number($(this).val()), fast: true });
     });
 
     for (const [index, state] of tile.flags.states.entries()) {
       select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
     }
-
-    const configButton = StatefulTile.makeHudButton("Configure Animated Tile States", "fas fa-cog");
-
-    configButton.on('pointerdown', () => {
-      TileInterface.show(tile.document);
-    });
 
     const sourcesContainer = $(`<select class="ats-tile-ui-button ats-sources-container"></select>`);
 
@@ -270,9 +292,8 @@ export default class StatefulTile {
       sourcesContainer.css('visibility', state === 'visible' ? "hidden" : "visible");
     });
 
-    selectContainer.append(sourceButton);
     selectContainer.append(select);
-    selectContainer.append(configButton);
+    selectContainer.append(sourceButton);
 
     root.append(controlsContainer);
     root.append(selectContainer);
@@ -295,12 +316,24 @@ export default class StatefulTile {
   }
 
   static onUpdate(tileDoc, changes, firstUpdate = false) {
-    const statefulTile = StatefulTile.get(tileDoc.uuid);
-    if (!statefulTile) return;
+    let statefulTile = StatefulTile.get(tileDoc.uuid);
+    if (!statefulTile) {
+      if (!tileDoc.object.isVideo || !getProperty(tileDoc, CONSTANTS.STATES_FLAG)?.length) return;
+      statefulTile = StatefulTile.make(tileDoc, tileDoc.object.texture);
+    }
     statefulTile.flags.updateData();
     Hooks.call("ats.updateState", tileDoc, statefulTile.flags.data, changes);
     if (!statefulTile.flags.states.length) {
-      return this.tearDown(tileDoc.uuid);
+      this.tearDown(tileDoc.uuid);
+      tileHudMap.get(tileDoc.uuid)?.render(true);
+      return;
+    }
+    if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
+      tileHudMap.get(tileDoc.uuid)?.render(true);
+      statefulTile.flags.data.queuedState = statefulTile.flags.determineNextStateIndex();
+      return tileDoc.update({
+        [CONSTANTS.QUEUED_STATE_FLAG]: statefulTile.flags.data.queuedState
+      });
     }
     statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
     statefulTile.updateSelect();
@@ -427,6 +460,9 @@ export default class StatefulTile {
       : (currState?.start ?? 0);
 
     switch (currStart) {
+
+      case CONSTANTS.START.START:
+        return 0;
 
       case CONSTANTS.START.END:
         return this.duration;
@@ -639,6 +675,23 @@ class Flags {
     return documentFlags;
   }
 
+  copyData() {
+    copiedData.set({
+      [CONSTANTS.STATES_FLAG]: this.data.states,
+      [CONSTANTS.FRAMES_FLAG]: this.data.frames,
+      [CONSTANTS.SOURCE_FLAG]: this.data.src,
+      [CONSTANTS.FPS_FLAG]: this.data.fps,
+      [CONSTANTS.CURRENT_STATE_FLAG]: this.currentStateIndex
+    });
+  }
+
+  pasteData() {
+    if (!copiedData) return;
+    this.doc.update({
+      ...foundry.utils.deepClone(get(copiedData))
+    });
+  }
+
   updateData() {
     this.data = this.getData();
   }
@@ -662,7 +715,7 @@ class Flags {
 
     const defaultIndex = this.states.findIndex(s => s.default);
 
-    switch (state.behavior) {
+    switch (state?.behavior) {
 
       case CONSTANTS.BEHAVIORS.ONCE_NEXT:
         return this.states[index + 1] ? index + 1 : defaultIndex;

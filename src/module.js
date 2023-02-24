@@ -4,7 +4,7 @@ import CONSTANTS from "./constants.js";
 
 import StatefulTile from "./StatefulTile.js";
 import SocketHandler from "./socket.js";
-import TileInterface from "./tile-interface/tile-interface.js";
+import { TileInterface } from "./tile-interface/tile-interface.js";
 
 Hooks.once('init', async function () {
   registerLibwrappers();
@@ -13,6 +13,8 @@ Hooks.once('init', async function () {
 });
 
 Hooks.once('ready', async function () {
+
+  TextureLoader.loader.loadImageTexture(CONSTANTS.MODULE_ICON);
 
   TileInterface.registerHooks();
 

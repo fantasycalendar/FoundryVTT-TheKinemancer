@@ -1,5 +1,5 @@
 const CONSTANTS = {
-  MODULE_NAME: "animated-tile-states",
+  MODULE_NAME: "the-kinemancer",
 
   BEHAVIORS: {
     STILL: "still",
@@ -10,18 +10,20 @@ const CONSTANTS = {
     ONCE_SPECIFIC: "once-specific"
   },
   START: {
-    END: "end",
+    START: "start",
     MID: "mid",
     PREV: "prev"
   },
   END: {
     NEXT: "next",
-    MID: "middle",
+    MID: "mid",
     END: "end"
   }
 }
 
 CONSTANTS.SOCKET_NAME = `module.${CONSTANTS.MODULE_NAME}`;
+CONSTANTS.MODULE_LOCATION = `modules/${CONSTANTS.MODULE_NAME}/`;
+CONSTANTS.MODULE_ICON = CONSTANTS.MODULE_LOCATION + "assets/thekinemancer_icon_logo.svg";
 
 CONSTANTS.FLAG_KEYS = {
   PREVIOUS_STATE: "previousState",
@@ -53,6 +55,15 @@ CONSTANTS.TRANSLATED_BEHAVIORS = {
   [CONSTANTS.BEHAVIORS.ONCE_PREVIOUS]: "Once, then previous state",
   [CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE]: "Once, then previous active state",
   [CONSTANTS.BEHAVIORS.ONCE_SPECIFIC]: "Once, then specific state",
+}
+
+CONSTANTS.BEHAVIOR_COLOR = {
+  [CONSTANTS.BEHAVIORS.STILL]: "rgb(125, 125, 125)",
+  [CONSTANTS.BEHAVIORS.LOOP]: "rgb(0,179,210)",
+  [CONSTANTS.BEHAVIORS.ONCE_NEXT]: "rgb(183,32,32)",
+  [CONSTANTS.BEHAVIORS.ONCE_PREVIOUS]: "rgb(183,32,32)",
+  [CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE]: "rgb(183,32,32)",
+  [CONSTANTS.BEHAVIORS.ONCE_SPECIFIC]: "rgb(183,32,32)",
 }
 
 export default CONSTANTS;

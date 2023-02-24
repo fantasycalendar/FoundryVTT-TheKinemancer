@@ -1,10 +1,10 @@
 import { SvelteApplication } from '@typhonjs-fvtt/runtime/svelte/application';
 import TileInterfaceShell from "./tile-interface-shell.svelte";
-import { get } from "svelte/store";
+import { get, writable } from "svelte/store";
 
-let copiedData = false;
+export const copiedData = writable(false);
 
-export default class TileInterface extends SvelteApplication {
+export class TileInterface extends SvelteApplication {
 
   static registerHooks() {
 
@@ -31,7 +31,7 @@ export default class TileInterface extends SvelteApplication {
         class: TileInterfaceShell,
         target: document.body
       },
-      width: 650,
+      width: 660,
       height: "auto",
       classes: ["ats"]
     });
@@ -68,7 +68,7 @@ export default class TileInterface extends SvelteApplication {
     buttons.unshift({
       icon: 'fas fa-file-import',
       title: "Import",
-      label: "Import",
+      label: "",
 
       onclick: async () => {
 
@@ -106,7 +106,7 @@ export default class TileInterface extends SvelteApplication {
     buttons.unshift({
       icon: 'fas fa-file-export',
       title: "Export",
-      label: "Export",
+      label: "",
 
       onclick: async () => {
         saveDataToFile(
@@ -118,27 +118,27 @@ export default class TileInterface extends SvelteApplication {
     });
 
     buttons.unshift({
-      icon: 'fas fa-copy',
-      title: "Copy",
-      label: "Copy",
-
-      onclick: async () => {
-        copiedData = this.svelte.applicationShell.exportData();
-        ui.notifications.notify("Animated Tile States | Copied tile state data")
-      }
-    });
-
-    buttons.unshift({
       icon: 'fas fa-paste',
       title: "Paste",
-      label: "Paste",
+      label: "",
 
       onclick: async () => {
-        if (this.svelte.applicationShell.importData(copiedData)) {
+        if (this.svelte.applicationShell.importData(get(copiedData))) {
           ui.notifications.notify("Animated Tile States | Pasted tile state data")
         } else {
           ui.notifications.notify("Animated Tile States | You haven't copied any animated tile state data!")
         }
+      }
+    });
+
+    buttons.unshift({
+      icon: 'fas fa-copy',
+      title: "Copy",
+      label: "",
+
+      onclick: async () => {
+        copiedData.set(this.svelte.applicationShell.exportData());
+        ui.notifications.notify("Animated Tile States | Copied tile state data")
       }
     });
 
