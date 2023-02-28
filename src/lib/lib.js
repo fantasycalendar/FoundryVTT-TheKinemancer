@@ -92,7 +92,7 @@ export function validateStates(states) {
     }
 
     if (!(isRealNumber(state.end) || Object.values(CONSTANTS.END).some(val => val === state.end))) {
-      if (state.behavior === CONSTANTS.BEHAVIORS.STILL) {
+      if (state.behavior === CONSTANTS.BEHAVIORS.STILL || state.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
         state.end = "";
       } else {
         errors.push(`State "${state.name}" has an invalid value in its "end" setting`)
@@ -135,4 +135,37 @@ export function validateStates(states) {
     }
   }
   return errors;
+}
+
+export function determineFileColor(inFile) {
+
+  const lowerCaseFile = decodeURI(inFile.toLowerCase());
+
+  for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
+    if (lowerCaseFile.endsWith(`  ${colorName}.webm`)) {
+      return { color };
+    }
+  }
+
+  return {
+    icon: "fas fa-ellipsis"
+  };
+
+}
+
+export function getThumbnailVariations(url) {
+  return Object.keys(CONST.IMAGE_FILE_EXTENSIONS).map(ext => url.replace(".webm", "." + ext));
+}
+
+export function getTileJsonPath(tileDocument) {
+  return decodeURI(tileDocument.texture.src).split("  ")[0].replace(".webm", "") + ".json";
+}
+
+export function createJsonFile(tileDocument, inData) {
+  const path = getTileJsonPath(tileDocument)
+  const splitPath = path.split('/');
+  const serializedData = JSON.stringify(inData);
+  const blob = new Blob([serializedData], { type: 'application/json' });
+  const file = new File([blob], splitPath.pop());
+  return FilePicker.upload("data", splitPath.join('/'), file, {}, { notify: false });
 }

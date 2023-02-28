@@ -6,6 +6,7 @@
   import { isRealNumber } from "../lib/lib.js";
   import SelectState from "./SelectState.svelte";
   import Select from "./Select.svelte";
+  import FontAwesomePicker from "./FontAwesomePicker.svelte";
 
   export let items;
   export let errors;
@@ -22,6 +23,7 @@
         start: 0,
         behavior: CONSTANTS.BEHAVIORS.STILL,
         end: "",
+        icon: "",
         nextState: null,
         default: !items.length
       }
@@ -73,6 +75,7 @@
 
 	<div class="ats-grid">
 		<div></div>
+		<div>Icon</div>
 		<div>State Name</div>
 		<div>Start</div>
 		<div>End</div>
@@ -100,6 +103,9 @@
 					>
 						<i class="fas fa-bars"></i>
 					</a>
+				</div>
+				<div>
+					<FontAwesomePicker bind:value={state.icon}/>
 				</div>
 				<div>
 					<input type="text" bind:value={state.name} autocomplete="false">
@@ -136,7 +142,7 @@
 				<div>
 					<Select {index}
 									style="position: relative;"
-									disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL}
+									disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL || state.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN}
 									items={Object.values(CONSTANTS.END).map(value => {
 										return {
 											props: {
@@ -151,7 +157,7 @@
 						<input type="text"
 									 style="width:100%;"
 									 bind:value={state.end}
-									 disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL}
+									 disabled={state.behavior === CONSTANTS.BEHAVIORS.STILL || state.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN}
 									 on:pointerup={(e) => { setTimeout(() => e.target.focus()) }}
 									 on:change={() => {
 							 if(isRealNumber(state.end) && Number(state.end) > duration){
@@ -233,10 +239,6 @@
     &:nth-child(odd) {
       background-color: rgba(21, 20, 18, 0.05);
     }
-  }
-
-  section {
-    margin-bottom: 0.5rem;
   }
 
 </style>

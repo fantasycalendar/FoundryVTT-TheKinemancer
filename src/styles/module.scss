@@ -2,7 +2,7 @@
 
   &-grid {
     display: grid;
-    grid-template-columns: 20px 177px 75px 75px 235px 20px 20px;
+    grid-template-columns: 20px 20px 177px 75px 75px 235px 20px 20px;
     gap: 3px;
     margin-bottom: 3px;
 
@@ -19,6 +19,15 @@
 
       > * {
         width: 100%;
+      }
+
+      > img {
+        min-width: 20px;
+        min-height: 20px;
+        max-height: 20px;
+        max-width: 20px;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.5);
       }
     }
 
@@ -84,7 +93,7 @@
         color: rgb(218, 218, 218);
         border-radius: 8px;
         height: 40px;
-        border: 0;
+        border: 1px solid #333;
 
         &:focus {
           box-shadow: none;
@@ -95,6 +104,49 @@
         }
       }
 
+      > div {
+        position: relative;
+      }
+
+    }
+
+    .ats-color-container {
+      position: absolute !important;
+      visibility: hidden;
+      display: flex;
+      max-width: 204px;
+      pointer-events: all;
+      flex-wrap: wrap;
+
+      box-sizing: content-box;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 10px var(--color-shadow-dark);
+      border: 1px solid #333;
+      border-radius: 8px;
+
+      > div {
+        flex: 1 0 30px;
+        max-width: 30px;
+        width: 30px;
+        max-height: 30px;
+        height: 30px;
+        margin: 2px;
+      }
+    }
+
+    .ats-color-button {
+      cursor: pointer;
+      width: 80%;
+      height: 80%;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &.ats-icon {
+        background-color: #23221d;
+      }
     }
 
     .ats-hud-control-icon {
@@ -102,6 +154,7 @@
       align-items: center;
       justify-content: center;
       width: 40px;
+      max-width: 40px;
       font-size: var(--font-size-28);
       color: var(--color-text-light-3);
       pointer-events: all;
@@ -114,19 +167,19 @@
     .ats-tile-ui-button {
       position: relative;
       height: 40px;
+      max-height: 40px;
       box-sizing: content-box;
       flex: 0 0 40px;
       margin: 8px;
       text-align: center;
       background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 0 15px var(--color-shadow-dark);
+      box-shadow: 0 0 10px var(--color-shadow-dark);
       border: 1px solid #333;
       border-radius: 8px;
 
       > img {
         padding: 3px;
         border: 0;
-        filter: invert(79%) sepia(2%) saturate(0%) hue-rotate(353deg) brightness(106%) contrast(88%);
       }
     }
 
@@ -282,4 +335,26 @@
   100% {
     transform: rotate(360deg);
   }
+}
+
+@font-face {
+  font-family: 'kinemancer';
+  src: url('modules/the-kinemancer/assets/kinemancer.eot');
+  src: url('modules/the-kinemancer/assets/kinemancer.eot?#iefix') format('embedded-opentype'),
+  url('modules/the-kinemancer/assets/kinemancer.woff') format('woff'),
+  url('modules/the-kinemancer/assets/kinemancer.ttf') format('truetype'),
+  url('modules/the-kinemancer/assets/kinemancer.svg#kinemancer') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.the-kinemancer-icon:before {
+  font-family: 'kinemancer';
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  font-style: normal;
+  font-variant: normal;
+  line-height: 2;
+  text-rendering: auto;
+  content: '\0041';
 }

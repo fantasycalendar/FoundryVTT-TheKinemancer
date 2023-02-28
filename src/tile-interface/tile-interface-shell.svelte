@@ -6,9 +6,8 @@
   import CONSTANTS from "../constants.js";
   import StateList from "./StateList.svelte";
   import { get, writable } from "svelte/store";
-  import FilePicker from "./FilePicker.svelte";
   import Toggle from "svelte-toggle";
-  import { getVideoDuration, validateStates } from "../lib/lib.js";
+  import { createJsonFile, getVideoDuration, validateStates } from "../lib/lib.js";
   import { TJSDocument } from "@typhonjs-fvtt/runtime/svelte/store";
 
   export let elementRoot;
@@ -19,7 +18,6 @@
 
   const doc = new TJSDocument(tileDocument);
 
-  let image = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.SOURCE_FLAG) ?? "");
   let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? true);
   let fps = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25);
   let statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? [{
@@ -76,14 +74,17 @@
     if (!isValid) {
       return false;
     }
-    tileDocument.update({
+    const data = {
       [CONSTANTS.STATES_FLAG]: states,
       [CONSTANTS.FRAMES_FLAG]: frames,
-      [CONSTANTS.SOURCE_FLAG]: image,
-      [CONSTANTS.FPS_FLAG]: fps,
+      [CONSTANTS.FPS_FLAG]: fps
+    };
+    tileDocument.update({
+      ...data,
       [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(tileDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1),
       [CONSTANTS.UPDATED_FLAG]: Number(Date.now())
     });
+    createJsonFile(tileDocument, data);
     return true;
   }
 
@@ -101,7 +102,6 @@
     return {
       [CONSTANTS.STATES_FLAG]: states,
       [CONSTANTS.FRAMES_FLAG]: frames,
-      [CONSTANTS.SOURCE_FLAG]: image,
       [CONSTANTS.FPS_FLAG]: fps,
       [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(tileDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1)
     }
@@ -111,7 +111,6 @@
     if (!importedData?.states?.length) return false;
     statesStore.set(getProperty(importedData, CONSTANTS.STATES_FLAG));
     frames = getProperty(importedData, CONSTANTS.FRAMES_FLAG)
-    image = getProperty(importedData, CONSTANTS.SOURCE_FLAG)
     fps = getProperty(importedData, CONSTANTS.FPS_FLAG)
     return true;
   }
@@ -125,15 +124,6 @@
 	<form autocomplete=off bind:this={form} class="ats-config" on:submit|preventDefault={updateClose}>
 
 		<div style="display: flex; gap: 1rem;">
-
-			<div>
-
-				<p>Here you can add a wild-card path that will add an additional button below the tile controls to quickly
-					switch between similar assets:</p>
-
-				<FilePicker bind:value={image} preferredFolder={tileDocument.texture.src}/>
-
-			</div>
 
 			<div style="display: flex; align-items: center; flex-direction: column;">
 

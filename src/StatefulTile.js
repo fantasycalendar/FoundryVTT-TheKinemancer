@@ -1,16 +1,18 @@
 import CONSTANTS from "./constants.js";
-import { copiedData, TileInterface } from "./tile-interface/tile-interface.js";
+import { TileInterface } from "./tile-interface/tile-interface.js";
 import * as lib from "./lib/lib.js";
 import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
-import { get } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 const tileHudMap = new Map();
-const _managedStatefulTiles = new Map();
+const managedStatefulTiles = new Map();
 let currentDelegator = false;
 let delegateDebounce = false;
 
-export default class StatefulTile {
+export const copiedData = writable(false);
+
+export class StatefulTile {
 
   constructor(document, texture) {
     this.document = document;
@@ -24,6 +26,7 @@ export default class StatefulTile {
     this.nextButton = false;
     this.prevButton = false;
     this.select = false;
+    this.newCurrentTime = null;
     this.ready = !!currentDelegator;
   }
 
@@ -124,9 +127,23 @@ export default class StatefulTile {
       tile.renderTileHUD(app, html);
     });
 
+    Hooks.on("preUpdateTile", (tileDoc, data) => {
+      StatefulTile.onPreUpdate(tileDoc, data);
+    });
+
     Hooks.on("updateTile", (tileDoc, data) => {
-      if (!hasProperty(data, CONSTANTS.FLAGS)) return;
       StatefulTile.onUpdate(tileDoc, data);
+    });
+
+    Hooks.on("createTile", (tileDoc) => {
+      const path = lib.getTileJsonPath(tileDoc);
+      fetch(path)
+        .then(response => response.json())
+        .then((result) => {
+          tileDoc.update(result);
+        })
+        .catch(err => {
+        });
     });
 
     Hooks.on("canvasReady", () => {
@@ -142,25 +159,28 @@ export default class StatefulTile {
       }, 200);
     })
 
-    const refreshDebounce = foundry.utils.debounce((placeableTile) => {
-      if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
-      const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
-      if (!tile) return;
+    const refreshDebounce = foundry.utils.debounce((tile) => {
       if (game?.video && tile.video) {
         game.video.play(tile.video);
       }
     }, 200);
 
-    Hooks.on("refreshTile", refreshDebounce);
+    Hooks.on("refreshTile", (placeableTile) => {
+      if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
+      const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
+      if (!tile) return;
+      tile.evaluateVisibility();
+      refreshDebounce(tile);
+    });
 
   }
 
   static getAll() {
-    return _managedStatefulTiles;
+    return managedStatefulTiles;
   }
 
   static get(uuid) {
-    return _managedStatefulTiles.get(uuid) || false;
+    return managedStatefulTiles.get(uuid) || false;
   }
 
   static make(document, texture) {
@@ -170,7 +190,7 @@ export default class StatefulTile {
     }
     if (existingTile) return existingTile;
     const newTile = new this(document, texture);
-    _managedStatefulTiles.set(newTile.uuid, newTile);
+    managedStatefulTiles.set(newTile.uuid, newTile);
     if (currentDelegator) {
       newTile.flags.updateData();
     }
@@ -185,11 +205,11 @@ export default class StatefulTile {
     const tile = StatefulTile.get(uuid);
     if (!tile) return;
     if (tile.timeout) clearTimeout(tile.timeout);
-    _managedStatefulTiles.delete(uuid);
+    managedStatefulTiles.delete(uuid);
   }
 
-  static makeHudButton(tooltip, icon) {
-    return $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="${tooltip}">
+  static makeHudButton(tooltip, icon, style = "") {
+    return $(`<div class="ats-hud-control-icon ats-tile-ui-button" style="${style}" data-tooltip-direction="UP" data-tooltip="${tooltip}">
       <i class="fas ${icon}"></i>
     </div>`);
   }
@@ -208,9 +228,7 @@ export default class StatefulTile {
 
     const controlsContainer = $("<div class='ats-hud-controls-container'></div>")
 
-    const configButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Configure Tile States">
-      <img src="${CONSTANTS.MODULE_ICON}"/>
-    </div>`);
+    const configButton = StatefulTile.makeHudButton("Configure Tile States", "the-kinemancer-icon", "margin-right: 40px;");
 
     configButton.on('pointerdown', () => {
       TileInterface.show(tile.document);
@@ -219,7 +237,7 @@ export default class StatefulTile {
     const fastPrevButton = StatefulTile.makeHudButton("Go To Previous State", "fas fa-backward-fast");
     const prevButton = StatefulTile.makeHudButton("Queue Previous State", "fas fa-backward-step");
     const nextButton = StatefulTile.makeHudButton("Queue Next State", "fas fa-step-forward");
-    const fastNextButton = StatefulTile.makeHudButton("Go To Next State", "fas fa-fast-forward");
+    const fastNextButton = StatefulTile.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
 
     fastPrevButton.on('pointerdown', () => {
       tile.changeState({ step: -1, fast: true });
@@ -257,6 +275,16 @@ export default class StatefulTile {
     controlsContainer.append(pasteButton)
 
     const selectContainer = $("<div class='ats-hud-select-container'></div>");
+
+    for (const [index, state] of tile.flags.states.entries()) {
+      if (!state.icon) continue;
+      const stateBtn = StatefulTile.makeHudButton(state.name, state.icon);
+      stateBtn.on("pointerdown", () => {
+        tile.changeState({ state: index, fast: true });
+      });
+      selectContainer.append(stateBtn);
+    }
+
     const select = $("<select class='ats-tile-ui-button'></select>");
     select.on('change', function () {
       tile.changeState({ state: Number($(this).val()), fast: true });
@@ -266,38 +294,55 @@ export default class StatefulTile {
       select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
     }
 
-    const sourcesContainer = $(`<select class="ats-tile-ui-button ats-sources-container"></select>`);
+    const tileColor = lib.determineFileColor(tile.document.texture.src);
 
-    sourcesContainer.on("change", function () {
-      sourcesContainer.css('visibility', 'hidden');
-      tile.update({
-        img: $(this).val()
-      });
-    })
+    const selectButtonContainer = $("<div></div>");
 
-    lib.getWildCardFiles(this.flags.src).then(async (files) => {
-      if (!files?.length) return;
-      for (const file of files) {
-        const fileNameParts = file.split("/");
-        const option = $(`<option value="${file}">${fileNameParts[fileNameParts.length - 1]}</option>`);
-        sourcesContainer.append(option);
+    const selectColorButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Change Tile Color">
+      ${tileColor.icon ? `<i class="fas ${tileColor.icon}"></i>` : ""}
+      ${tileColor.color ? `<div class="ats-color-button" style="${tileColor.color}"></div>` : ""}
+    </div>`);
+
+    const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+
+    const baseFile = decodeURI(tile.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
+    lib.getWildCardFiles(baseFile).then((results) => {
+      const width = results.length * 34;
+      selectColorContainer.css({ left: width * -0.33, width });
+      for (const filePath of results) {
+        const colorData = lib.determineFileColor(filePath);
+        const button = colorData.color
+          ? $(`<div class="ats-color-button" style="${colorData.color}"></div>`)
+          : $(`<div class="ats-color-button ats-icon"><i class="fas ${colorData.icon}"></i></div>`)
+        selectColorContainer.append(button);
+        button.on("pointerdown", async () => {
+          selectColorButton.html(`
+            ${colorData.icon ? `<i class="fas ${colorData.icon}"></i>` : ""}
+            ${colorData.color ? `<div class="ats-color-button" style="${colorData.color}"></div>` : ""}
+          `)
+          selectColorButton.trigger("pointerdown");
+          tile.document.update({
+            img: filePath
+          });
+        });
       }
     });
 
-    const sourceButton = StatefulTile.makeHudButton("Select New Source", "fas fa-file-pen");
-
-    sourceButton.on("pointerdown", () => {
-      const state = sourcesContainer.css('visibility');
-      sourceButton.toggleClass('active', state !== 'visible');
-      sourcesContainer.css('visibility', state === 'visible' ? "hidden" : "visible");
+    selectColorButton.on('pointerdown', () => {
+      const newState = selectColorContainer.css('visibility') === "hidden"
+        ? "visible"
+        : "hidden";
+      selectColorContainer.css("visibility", newState);
     });
 
+    selectButtonContainer.append(selectColorButton);
+    selectButtonContainer.append(selectColorContainer);
+
     selectContainer.append(select);
-    selectContainer.append(sourceButton);
+    selectContainer.append(selectButtonContainer);
 
     root.append(controlsContainer);
     root.append(selectContainer);
-    root.append(sourcesContainer);
 
     tile.select = select;
     tile.prevButton = prevButton;
@@ -315,8 +360,25 @@ export default class StatefulTile {
     }
   }
 
+  static onPreUpdate(tileDoc, changes) {
+    let statefulTile = StatefulTile.get(tileDoc.uuid);
+    if (hasProperty(changes, "texture.src") && statefulTile) {
+      statefulTile.newCurrentTime = statefulTile.video.currentTime * 1000;
+    }
+  }
+
   static onUpdate(tileDoc, changes, firstUpdate = false) {
     let statefulTile = StatefulTile.get(tileDoc.uuid);
+    if (hasProperty(changes, "texture.src") && statefulTile) {
+      setTimeout(() => {
+        statefulTile.texture = tileDoc.object.texture;
+        statefulTile.video = tileDoc.object.texture.baseTexture.resource.source;
+        statefulTile.still = false;
+        statefulTile.playing = false;
+        game.video.play(statefulTile.video);
+      }, 100);
+    }
+    if (!hasProperty(changes, CONSTANTS.FLAGS)) return;
     if (!statefulTile) {
       if (!tileDoc.object.isVideo || !getProperty(tileDoc, CONSTANTS.STATES_FLAG)?.length) return;
       statefulTile = StatefulTile.make(tileDoc, tileDoc.object.texture);
@@ -502,6 +564,13 @@ export default class StatefulTile {
 
   }
 
+  evaluateVisibility() {
+    const hidden = this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN;
+    this.document.object.renderable = !hidden || game.user.isGM;
+    this.document.object.mesh.alpha = hidden ? (game.user.isGM ? 0.5 : 0.0) : this.document.alpha;
+    return hidden;
+  }
+
   async getVideoPlaybackState() {
 
     if (!this.ready) return {
@@ -512,8 +581,11 @@ export default class StatefulTile {
 
     if (!this.flags?.states?.length || !this.document?.object) return;
 
-    const startTime = this.determineStartTime(this.flags.currentStateIndex) ?? 0;
+    const startTime = this.newCurrentTime ?? this.determineStartTime(this.flags.currentStateIndex) ?? 0;
     const endTime = this.determineEndTime(this.flags.currentStateIndex) ?? this.duration;
+    this.newCurrentTime = null;
+
+    this.evaluateVisibility();
 
     this.still = false;
     this.playing = true;
@@ -522,7 +594,8 @@ export default class StatefulTile {
     switch (this.flags.currentState.behavior) {
 
       case CONSTANTS.BEHAVIORS.STILL:
-        return this.handleStillBehavior(startTime, endTime);
+      case CONSTANTS.BEHAVIORS.STILL_HIDDEN:
+        return this.handleStillBehavior(startTime);
 
       case CONSTANTS.BEHAVIORS.LOOP:
         return this.handleLoopBehavior(startTime, endTime);
@@ -613,11 +686,14 @@ class Flags {
     this.doc = doc;
     this.uuid = doc.uuid;
     this.delegationUuid = this.uuid.split(".")[1] + "_" + this.uuid.split(".")[3];
-    this.data = {};
+    this._data = false;
   }
 
-  get src() {
-    return this.data?.src ?? "";
+  get data() {
+    if (!this._data) {
+      this._data = this.getData();
+    }
+    return this._data;
   }
 
   get states() {
@@ -637,7 +713,7 @@ class Flags {
   }
 
   get previousStateIndex() {
-    return Math.max(0, Math.min(this.data.previousState ?? this.data.currentState, this.data.states.length - 1));
+    return Math.max(0, Math.min(this.data.previousState ?? this.currentStateIndex, this.data.states.length - 1));
   }
 
   get currentState() {
@@ -645,7 +721,8 @@ class Flags {
   }
 
   get currentStateIndex() {
-    return Math.max(0, Math.min(this.data.currentState, this.data.states.length - 1));
+    const defaultStateIndex = this.data.states.findIndex(state => state.default) ?? 0;
+    return Math.max(0, Math.min(this.data.currentState ?? defaultStateIndex, this.data.states.length - 1));
   }
 
   get queuedState() {
@@ -679,7 +756,6 @@ class Flags {
     copiedData.set({
       [CONSTANTS.STATES_FLAG]: this.data.states,
       [CONSTANTS.FRAMES_FLAG]: this.data.frames,
-      [CONSTANTS.SOURCE_FLAG]: this.data.src,
       [CONSTANTS.FPS_FLAG]: this.data.fps,
       [CONSTANTS.CURRENT_STATE_FLAG]: this.currentStateIndex
     });
@@ -693,7 +769,7 @@ class Flags {
   }
 
   updateData() {
-    this.data = this.getData();
+    this._data = this.getData();
   }
 
   getStateById(id) {

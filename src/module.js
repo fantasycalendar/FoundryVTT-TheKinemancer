@@ -2,9 +2,10 @@ import "./styles/module.scss";
 
 import CONSTANTS from "./constants.js";
 
-import StatefulTile from "./StatefulTile.js";
+import { StatefulTile } from "./StatefulTile.js";
 import SocketHandler from "./socket.js";
 import { TileInterface } from "./tile-interface/tile-interface.js";
+import * as lib from "./lib/lib.js";
 
 Hooks.once('init', async function () {
   registerLibwrappers();
@@ -13,8 +14,6 @@ Hooks.once('init', async function () {
 });
 
 Hooks.once('ready', async function () {
-
-  TextureLoader.loader.loadImageTexture(CONSTANTS.MODULE_ICON);
 
   TileInterface.registerHooks();
 
@@ -39,43 +38,62 @@ Hooks.once('ready', async function () {
     updateState: (uuid, options) => StatefulTile.changeTileState(uuid, options)
   };
 
-
 });
 
 
-Hooks.on('renderFilePicker', (filePicker, html) => {
-  if (game.modules.get("animation-preview")?.active) return;
+Hooks.on('renderFilePicker', (filePicker, html, options) => {
+  options.files.forEach(file => {
+    if (!file.url.endsWith(".webm")) return;
+    for (const variation of lib.getThumbnailVariations(file.url)) {
+      const elem = html.find(`[data-path="${variation}"]`);
+      if (elem.length) {
+        elem.remove();
+        return;
+      }
+    }
+  });
+
   html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, img) => {
     const $img = $(img);
     const $parent = $img.closest('[data-path]');
     const path = $parent.data('path');
     const width = $img.attr('width');
     const height = $img.attr('height');
-    const $video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
-    $img.replaceWith($video);
 
+    const thumbnailUrl = options.files.find(file => lib.getThumbnailVariations(path).includes(file.url))?.url;
+    if (thumbnailUrl) {
+      setTimeout(() => {
+        $img.attr("src", thumbnailUrl);
+      }, 150)
+    }
+
+    const $video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
+    $video.hide();
+    $parent.append($video);
     const video = $video.get(0);
     let playTimeout = null;
-    $parent.addClass('video-parent -loading');
 
-    video.addEventListener('loadeddata', () => {
-      $parent.removeClass('-loading');
-    }, false);
+    $parent.addClass('video-parent');
 
-    $parent.hover(
-      () => {
-        playTimeout = setTimeout(() => {
-          if (!video.src) video.src = path;
-          video.currentTime = 0;
-          video.play().catch(e => console.error(e));
-        }, !!video.src ? 0 : 750);
-      },
-      () => {
-        clearTimeout(playTimeout);
-        video.pause();
+    $parent.on("mouseenter", () => {
+      if (!video.src) {
+        $parent.addClass(' -loading');
+        video.addEventListener('loadeddata', () => {
+          $parent.removeClass('-loading');
+        }, false);
+        $img.hide();
+        $video.show();
+        video.src = path;
+      }
+      playTimeout = setTimeout(() => {
         video.currentTime = 0;
-      },
-    );
+        video.play().catch(e => console.error(e));
+      }, !!video.src ? 0 : 750);
+    }).on("mouseleave", () => {
+      clearTimeout(playTimeout);
+      video.pause();
+      video.currentTime = 0;
+    });
   });
 });
 
@@ -89,23 +107,18 @@ function registerLibwrappers() {
     return wrapped();
   }, "MIXED");
 
-  libWrapper.register(
-    CONSTANTS.MODULE_NAME,
-    'VideoHelper.prototype.play',
-    async function (wrapped, video, options) {
-      for (const tile of StatefulTile.getAll().values()) {
-        if (video === tile.video) {
-          if (this.locked || tile.destroyed || tile.playing || tile.still) return;
-          if (window.document.hidden) return video.pause();
-          const newOptions = await tile.getVideoPlaybackState();
-          if (!newOptions) return;
-          return wrapped(video, newOptions);
-        }
+  libWrapper.register(CONSTANTS.MODULE_NAME, 'VideoHelper.prototype.play', async function (wrapped, video, options) {
+    for (const tile of StatefulTile.getAll().values()) {
+      if (video === tile.video) {
+        if (this.locked || tile.destroyed || tile.playing || tile.still) return;
+        if (window.document.hidden) return video.pause();
+        const newOptions = await tile.getVideoPlaybackState();
+        if (!newOptions) return;
+        return wrapped(video, newOptions);
       }
-      return wrapped(video, options);
-    },
-    "MIXED"
-  );
+    }
+    return wrapped(video, options);
+  }, "MIXED");
 
 }
 

@@ -1,8 +1,8 @@
 import { SvelteApplication } from '@typhonjs-fvtt/runtime/svelte/application';
 import TileInterfaceShell from "./tile-interface-shell.svelte";
-import { get, writable } from "svelte/store";
+import { get } from "svelte/store";
+import { copiedData } from "../StatefulTile.js";
 
-export const copiedData = writable(false);
 
 export class TileInterface extends SvelteApplication {
 
@@ -13,7 +13,7 @@ export class TileInterface extends SvelteApplication {
       buttons.unshift({
         label: "",
         class: "ats",
-        icon: "fas fa-clapperboard",
+        icon: "the-kinemancer-icon",
         onclick: () => {
           TileInterface.show(app.document, { parentApp: app })
         }
@@ -31,7 +31,7 @@ export class TileInterface extends SvelteApplication {
         class: TileInterfaceShell,
         target: document.body
       },
-      width: 660,
+      width: 680,
       height: "auto",
       classes: ["ats"]
     });
