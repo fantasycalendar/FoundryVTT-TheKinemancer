@@ -109,7 +109,8 @@ export class TileInterface extends SvelteApplication {
       label: "",
 
       onclick: async () => {
-        const fileName = this.document.texture.src
+        debugger;
+        const fileName = this.options.tileDocument.texture.src
           .split('/')
           .pop()
           .replace(".webm", ".json");

@@ -107,11 +107,12 @@
   }
 
   export function importData(importedData) {
-    const states = getProperty(importedData, CONSTANTS.STATES_FLAG);
+    const data = foundry.utils.mergeObject(importedData, {});
+    const states = getProperty(data, CONSTANTS.STATES_FLAG);
     if (!states?.length) return false;
     statesStore.set(states);
-    frames = getProperty(importedData, CONSTANTS.FRAMES_FLAG)
-    fps = getProperty(importedData, CONSTANTS.FPS_FLAG)
+    frames = getProperty(data, CONSTANTS.FRAMES_FLAG)
+    fps = getProperty(data, CONSTANTS.FPS_FLAG)
     return true;
   }
 
