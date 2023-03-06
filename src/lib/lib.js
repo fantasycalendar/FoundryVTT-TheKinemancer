@@ -47,6 +47,17 @@ export function isRealNumber(n) {
   return typeof num == 'number' && !isNaN(num) && isFinite(num);
 }
 
+export function transformNumber(num) {
+  // Flip the input number
+  const flippedNum = 1 - num;
+
+  // Apply exponential transformation with base 2
+  const transformedNum = 1 - Math.pow(2, -flippedNum);
+
+  // Flip the output number
+  return 1 - transformedNum;
+}
+
 export async function getWildCardFiles(inFile) {
 
   if (!inFile) return false;
@@ -143,12 +154,13 @@ export function determineFileColor(inFile) {
 
   for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
     if (lowerCaseFile.endsWith(`  ${colorName}.webm`)) {
-      return { color };
+      return { colorName, color };
     }
   }
 
   return {
-    icon: "fas fa-ellipsis"
+    colorName: false,
+    color: CONSTANTS.COLOR_CODE["none"]
   };
 
 }

@@ -26,7 +26,7 @@ export class TileInterface extends SvelteApplication {
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      title: "Animated Tile State",
+      title: "The Kinemancer: Animated Tile States",
       svelte: {
         class: TileInterfaceShell,
         target: document.body
@@ -109,10 +109,15 @@ export class TileInterface extends SvelteApplication {
       label: "",
 
       onclick: async () => {
+        const fileName = this.document.texture.src
+          .split('/')
+          .pop()
+          .replace(".webm", ".json");
+
         saveDataToFile(
           JSON.stringify(this.svelte.applicationShell.exportData()),
           "text/json",
-          "animated-tile-state.json"
+          fileName
         )
       }
     });

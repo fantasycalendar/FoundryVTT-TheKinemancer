@@ -57,14 +57,13 @@
     }
   }
 
-  $: duration = actualDuration * (frames ? 1000 / (fps || 25) : 1000)
+  $: duration = actualDuration * (frames ? (fps || 25) : 1000);
 
   $: {
     const errors = validateStates($statesStore);
+    errorsStore.set([]);
     isValid = !errors.length;
-    if (isValid) {
-      errorsStore.set([]);
-    } else {
+    if (!isValid) {
       updateErrors(errors);
     }
   }
@@ -108,8 +107,9 @@
   }
 
   export function importData(importedData) {
-    if (!importedData?.states?.length) return false;
-    statesStore.set(getProperty(importedData, CONSTANTS.STATES_FLAG));
+    const states = getProperty(importedData, CONSTANTS.STATES_FLAG);
+    if (!states?.length) return false;
+    statesStore.set(states);
     frames = getProperty(importedData, CONSTANTS.FRAMES_FLAG)
     fps = getProperty(importedData, CONSTANTS.FPS_FLAG)
     return true;
@@ -125,17 +125,20 @@
 
 		<div style="display: flex; gap: 1rem;">
 
-			<div style="display: flex; align-items: center; flex-direction: column;">
+			<div style="display: flex; flex-direction: column; padding: 0.15rem;">
 
-				<div style="display: flex; align-items: center;" class="ats-bottom-divider">
+				<div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
 
-					<div style="min-width: 125px; margin-right:1rem;">
-						<Toggle
-							bind:toggled={frames}
-							label="Milliseconds or Frames"
-							off="Milliseconds"
-							on="Frames"
-						/>
+					<div style="margin-right: 0.25rem;">
+
+						<label
+							style="flex: 1 0 auto; margin-right: 0.5rem; display: block; margin-bottom: 0.25rem; font-size: 0.75rem;">
+							Time Type
+						</label>
+						<select style="" on:change={(e) => { frames = e.target.value === "frames"}}>
+							<option value="frames" selected={frames}>Frames</option>
+							<option value="milliseconds" selected={!frames}>Milliseconds</option>
+						</select>
 					</div>
 
 					<div style="width: 40px;">

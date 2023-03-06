@@ -11,6 +11,7 @@ let currentDelegator = false;
 let delegateDebounce = false;
 
 export const copiedData = writable(false);
+const hudScale = writable(0);
 
 export class StatefulTile {
 
@@ -122,9 +123,7 @@ export class StatefulTile {
 
     Hooks.on("renderTileHUD", (app, html) => {
       tileHudMap.set(app.object.document.uuid, app);
-      const tile = StatefulTile.get(app.object.document.uuid);
-      if (!tile) return;
-      tile.renderTileHUD(app, html);
+      StatefulTile.renderTileHUD(app, html);
     });
 
     Hooks.on("preUpdateTile", (tileDoc, data) => {
@@ -147,6 +146,7 @@ export class StatefulTile {
     });
 
     Hooks.on("canvasReady", () => {
+      hudScale.set(canvas.stage.scale.x);
       setTimeout(() => {
         for (const placeableTile of canvas.tiles.placeables) {
           if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) continue;
@@ -158,6 +158,14 @@ export class StatefulTile {
         }
       }, 200);
     })
+
+    Hooks.on("canvasPan", () => {
+      hudScale.set(canvas.stage.scale.x);
+    });
+
+    hudScale.subscribe(() => {
+      StatefulTile.getAll().forEach(tile => tile.updateHudScale());
+    });
 
     const refreshDebounce = foundry.utils.debounce((tile) => {
       if (game?.video && tile.video) {
@@ -220,9 +228,10 @@ export class StatefulTile {
    * @param app
    * @param html
    */
-  renderTileHUD(app, html) {
+  static renderTileHUD(app, html) {
 
-    const tile = this;
+    const tileDocument = app.object.document;
+    const tile = StatefulTile.get(app.object.document.uuid);
 
     const root = $("<div class='ats-hud'></div>");
 
@@ -231,125 +240,139 @@ export class StatefulTile {
     const configButton = StatefulTile.makeHudButton("Configure Tile States", "the-kinemancer-icon", "margin-right: 40px;");
 
     configButton.on('pointerdown', () => {
-      TileInterface.show(tile.document);
-    });
-
-    const fastPrevButton = StatefulTile.makeHudButton("Go To Previous State", "fas fa-backward-fast");
-    const prevButton = StatefulTile.makeHudButton("Queue Previous State", "fas fa-backward-step");
-    const nextButton = StatefulTile.makeHudButton("Queue Next State", "fas fa-step-forward");
-    const fastNextButton = StatefulTile.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
-
-    fastPrevButton.on('pointerdown', () => {
-      tile.changeState({ step: -1, fast: true });
-    });
-
-    prevButton.on('pointerdown', () => {
-      tile.changeState({ step: -1 });
-    });
-
-    nextButton.on('pointerdown', () => {
-      tile.changeState();
-    });
-
-    fastNextButton.on('pointerdown', () => {
-      tile.changeState({ fast: true });
-    });
-
-    const copyButton = StatefulTile.makeHudButton("Copy", "fas fa-copy");
-    const pasteButton = StatefulTile.makeHudButton("Paste", "fas fa-paste");
-
-    copyButton.on('pointerdown', () => {
-      tile.flags.copyData();
-    });
-
-    pasteButton.on('pointerdown', () => {
-      tile.flags.pasteData();
+      TileInterface.show(tileDocument);
     });
 
     controlsContainer.append(configButton);
-    controlsContainer.append(fastPrevButton)
-    controlsContainer.append(prevButton)
-    controlsContainer.append(nextButton)
-    controlsContainer.append(fastNextButton)
-    controlsContainer.append(copyButton)
-    controlsContainer.append(pasteButton)
 
-    const selectContainer = $("<div class='ats-hud-select-container'></div>");
+    root.append(controlsContainer);
 
-    for (const [index, state] of tile.flags.states.entries()) {
-      if (!state.icon) continue;
-      const stateBtn = StatefulTile.makeHudButton(state.name, state.icon);
-      stateBtn.on("pointerdown", () => {
-        tile.changeState({ state: index, fast: true });
+    if (tile) {
+
+      const fastPrevButton = StatefulTile.makeHudButton("Go To Previous State", "fas fa-backward-fast");
+      const prevButton = StatefulTile.makeHudButton("Queue Previous State", "fas fa-backward-step");
+      const nextButton = StatefulTile.makeHudButton("Queue Next State", "fas fa-step-forward");
+      const fastNextButton = StatefulTile.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
+
+      fastPrevButton.on('pointerdown', () => {
+        tile.changeState({ step: -1, fast: true });
       });
-      selectContainer.append(stateBtn);
-    }
 
-    const select = $("<select class='ats-tile-ui-button'></select>");
-    select.on('change', function () {
-      tile.changeState({ state: Number($(this).val()), fast: true });
-    });
+      prevButton.on('pointerdown', () => {
+        tile.changeState({ step: -1 });
+      });
 
-    for (const [index, state] of tile.flags.states.entries()) {
-      select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
-    }
+      nextButton.on('pointerdown', () => {
+        tile.changeState();
+      });
 
-    const tileColor = lib.determineFileColor(tile.document.texture.src);
+      fastNextButton.on('pointerdown', () => {
+        tile.changeState({ fast: true });
+      });
 
-    const selectButtonContainer = $("<div></div>");
+      const copyButton = StatefulTile.makeHudButton("Copy", "fas fa-copy");
+      const pasteButton = StatefulTile.makeHudButton("Paste", "fas fa-paste");
 
-    const selectColorButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Change Tile Color">
+      copyButton.on('pointerdown', () => {
+        tile.flags.copyData();
+      });
+
+      pasteButton.on('pointerdown', () => {
+        tile.flags.pasteData();
+      });
+
+      controlsContainer.append(fastPrevButton)
+      controlsContainer.append(prevButton)
+      controlsContainer.append(nextButton)
+      controlsContainer.append(fastNextButton)
+      controlsContainer.append(copyButton)
+      controlsContainer.append(pasteButton)
+
+      const selectContainer = $("<div class='ats-hud-select-container'></div>");
+
+      for (const [index, state] of tile.flags.states.entries()) {
+        if (!state.icon) continue;
+        const stateBtn = StatefulTile.makeHudButton(state.name, state.icon);
+        stateBtn.on("pointerdown", () => {
+          tile.changeState({ state: index, fast: true });
+        });
+        selectContainer.append(stateBtn);
+      }
+
+      const select = $("<select class='ats-tile-ui-button'></select>");
+      select.on('change', function () {
+        tile.changeState({ state: Number($(this).val()), fast: true });
+      });
+
+      for (const [index, state] of tile.flags.states.entries()) {
+        select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+      }
+
+      const tileColor = lib.determineFileColor(tile.document.texture.src);
+
+      const selectButtonContainer = $("<div></div>");
+
+      const selectColorButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Change Tile Color">
       ${tileColor.icon ? `<i class="fas ${tileColor.icon}"></i>` : ""}
       ${tileColor.color ? `<div class="ats-color-button" style="${tileColor.color}"></div>` : ""}
     </div>`);
 
-    const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+      const selectColorContainer = $(`<div class="ats-color-container"></div>`);
 
-    const baseFile = decodeURI(tile.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
-    lib.getWildCardFiles(baseFile).then((results) => {
-      const width = results.length * 34;
-      selectColorContainer.css({ left: width * -0.33, width });
-      for (const filePath of results) {
-        const colorData = lib.determineFileColor(filePath);
-        const button = colorData.color
-          ? $(`<div class="ats-color-button" style="${colorData.color}"></div>`)
-          : $(`<div class="ats-color-button ats-icon"><i class="fas ${colorData.icon}"></i></div>`)
-        selectColorContainer.append(button);
-        button.on("pointerdown", async () => {
-          selectColorButton.html(`
-            ${colorData.icon ? `<i class="fas ${colorData.icon}"></i>` : ""}
-            ${colorData.color ? `<div class="ats-color-button" style="${colorData.color}"></div>` : ""}
-          `)
-          selectColorButton.trigger("pointerdown");
-          tile.document.update({
-            img: filePath
+      const baseFile = decodeURI(tile.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
+      lib.getWildCardFiles(baseFile).then((results) => {
+        const width = results.length * 34;
+        selectColorContainer.css({ left: width * -0.33, width });
+        for (const filePath of results) {
+          const { colorName, color } = lib.determineFileColor(filePath);
+          const button = $(`<div class="ats-color-button" style="${color}"></div>`)
+          if (!colorName) {
+            selectColorContainer.prepend(button);
+          } else {
+            selectColorContainer.append(button);
+          }
+          button.on("pointerdown", async () => {
+            selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
+            selectColorButton.trigger("pointerdown");
+            tile.document.update({
+              img: filePath
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    selectColorButton.on('pointerdown', () => {
-      const newState = selectColorContainer.css('visibility') === "hidden"
-        ? "visible"
-        : "hidden";
-      selectColorContainer.css("visibility", newState);
-    });
+      selectColorButton.on('pointerdown', () => {
+        const newState = selectColorContainer.css('visibility') === "hidden"
+          ? "visible"
+          : "hidden";
+        selectColorContainer.css("visibility", newState);
+      });
 
-    selectButtonContainer.append(selectColorButton);
-    selectButtonContainer.append(selectColorContainer);
+      selectButtonContainer.append(selectColorButton);
+      selectButtonContainer.append(selectColorContainer);
 
-    selectContainer.append(select);
-    selectContainer.append(selectButtonContainer);
+      selectContainer.append(select);
+      selectContainer.append(selectButtonContainer);
 
-    root.append(controlsContainer);
-    root.append(selectContainer);
+      root.append(selectContainer);
 
-    tile.select = select;
-    tile.prevButton = prevButton;
-    tile.nextButton = nextButton;
+      tile.select = select;
+      tile.prevButton = prevButton;
+      tile.nextButton = nextButton;
+
+      tile.updateHudScale();
+
+    }
 
     html.find(".col.middle").append(root);
 
+  }
+
+  updateHudScale() {
+    if (!this.select) return;
+    const scale = get(hudScale) + 0.25;
+    const fontSize = scale >= 1.0 ? 1.0 : Math.min(1.0, Math.max(0.25, lib.transformNumber(scale)))
+    this.select.children().css("font-size", `${fontSize}rem`)
   }
 
   updateSelect() {
@@ -375,6 +398,7 @@ export class StatefulTile {
         statefulTile.video = tileDoc.object.texture.baseTexture.resource.source;
         statefulTile.still = false;
         statefulTile.playing = false;
+        clearTimeout(statefulTile.timeout);
         game.video.play(statefulTile.video);
       }, 100);
     }
@@ -390,14 +414,18 @@ export class StatefulTile {
       tileHudMap.get(tileDoc.uuid)?.render(true);
       return;
     }
+    statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
     if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
       tileHudMap.get(tileDoc.uuid)?.render(true);
+      statefulTile.still = false;
+      statefulTile.playing = false;
+      clearTimeout(statefulTile.timeout);
+      game.video.play(statefulTile.video);
       statefulTile.flags.data.queuedState = statefulTile.flags.determineNextStateIndex();
       return tileDoc.update({
         [CONSTANTS.QUEUED_STATE_FLAG]: statefulTile.flags.data.queuedState
       });
     }
-    statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
     statefulTile.updateSelect();
     if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
       if (statefulTile.nextButton) {

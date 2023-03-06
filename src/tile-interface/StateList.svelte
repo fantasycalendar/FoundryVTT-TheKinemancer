@@ -2,7 +2,6 @@
 
   import CONSTANTS from "../constants.js";
   import { dndzone, SOURCES, TRIGGERS } from 'svelte-dnd-action';
-  import { createEventDispatcher } from "svelte";
   import { isRealNumber } from "../lib/lib.js";
   import SelectState from "./SelectState.svelte";
   import Select from "./Select.svelte";
@@ -11,8 +10,6 @@
   export let items;
   export let errors;
   export let duration;
-
-  const dispatch = createEventDispatcher();
 
   function addState() {
     items = [

@@ -67,7 +67,7 @@ CONSTANTS.BEHAVIOR_COLOR = {
 }
 
 CONSTANTS.COLOR_CODE = {
-  "none": "background: repeating-conic-gradient(#808080 0% 25%, transparent 0% 50%) 50% / 20px 20px",
+  "none": "background: repeating-conic-gradient(#888 0% 25%, #333 0% 50%) 50% / 40px 40px",
   "blue": "background-color: #0085fa;",
   "blue dark": "background-color: #0037fa;",
   "blue light": "background-color: #1ad7ff;",
@@ -77,7 +77,7 @@ CONSTANTS.COLOR_CODE = {
   "green": "background-color: #12ff05;",
   "green dark": "background-color: #00944b;",
   "green light": "background-color: #86ff6b;",
-  "green-yellow": "background-color: #bbff0f;",
+  "green yellow": "background-color: #bbff0f;",
   "grey": "background-color: #7d7d7d;",
   "grey dark": "background-color: #4f4f4f;",
   "grey light": "background-color: #c2c2c2;",

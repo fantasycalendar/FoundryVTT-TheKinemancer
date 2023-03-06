@@ -53,46 +53,48 @@ Hooks.on('renderFilePicker', (filePicker, html, options) => {
     }
   });
 
-  html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, img) => {
-    const $img = $(img);
-    const $parent = $img.closest('[data-path]');
-    const path = $parent.data('path');
-    const width = $img.attr('width');
-    const height = $img.attr('height');
+  html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, imgElem) => {
+    const img = $(imgElem);
+    const parent = img.closest('[data-path]');
+    const path = parent.data('path');
+    const width = img.attr('width');
+    const height = img.attr('height');
 
     const thumbnailUrl = options.files.find(file => lib.getThumbnailVariations(path).includes(file.url))?.url;
     if (thumbnailUrl) {
       setTimeout(() => {
-        $img.attr("src", thumbnailUrl);
+        img.attr("src", thumbnailUrl);
       }, 150)
     }
 
-    const $video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
-    $video.hide();
-    $parent.append($video);
-    const video = $video.get(0);
+    const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
+    video.hide();
+    parent.append(video);
+    const videoElem = video.get(0);
     let playTimeout = null;
 
-    $parent.addClass('video-parent');
+    parent.addClass('video-parent');
 
-    $parent.on("mouseenter", () => {
-      if (!video.src) {
-        $parent.addClass(' -loading');
-        video.addEventListener('loadeddata', () => {
-          $parent.removeClass('-loading');
+    parent.on("mouseenter", () => {
+      if (!videoElem.src) {
+        parent.addClass(' -loading');
+        videoElem.addEventListener('loadeddata', () => {
+          parent.removeClass('-loading');
         }, false);
-        $img.hide();
-        $video.show();
-        video.src = path;
+        videoElem.src = path;
       }
+      img.hide();
+      video.show();
       playTimeout = setTimeout(() => {
-        video.currentTime = 0;
-        video.play().catch(e => console.error(e));
-      }, !!video.src ? 0 : 750);
+        videoElem.currentTime = 0;
+        videoElem.play().catch(e => console.error(e));
+      }, !!videoElem.src ? 0 : 750);
     }).on("mouseleave", () => {
       clearTimeout(playTimeout);
-      video.pause();
-      video.currentTime = 0;
+      videoElem.pause();
+      videoElem.currentTime = 0;
+      video.hide();
+      img.show();
     });
   });
 });
