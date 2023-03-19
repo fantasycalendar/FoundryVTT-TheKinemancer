@@ -1,5 +1,4 @@
 import CONSTANTS from "./constants.js";
-import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
@@ -258,19 +257,11 @@ export class StatefulVideo {
   static renderStatefulVideoHud(app, html) {
 
     const placeableDocument = app.object.document;
-    const statefulVideo = StatefulVideo.get(app.object.document.uuid);
+    const statefulVideo = StatefulVideo.get(placeableDocument.uuid);
 
     const root = $("<div class='ats-hud'></div>");
 
-    const controlsContainer = $("<div class='ats-hud-controls-container'></div>")
-
-    const configButton = StatefulVideo.makeHudButton("Configure Video States", "the-kinemancer-icon", statefulVideo ? "margin-right: 40px;" : "");
-
-    configButton.on('pointerdown', () => {
-      StatefulVideoInterface.show(placeableDocument);
-    });
-
-    controlsContainer.append(configButton);
+    const controlsContainer = $("<div class='ats-hud-controls-container'></div>");
 
     root.append(controlsContainer);
 
@@ -279,7 +270,7 @@ export class StatefulVideo {
       const fastPrevButton = StatefulVideo.makeHudButton("Go To Previous State", "fas fa-backward-fast");
       const prevButton = StatefulVideo.makeHudButton("Queue Previous State", "fas fa-backward-step");
       const nextButton = StatefulVideo.makeHudButton("Queue Next State", "fas fa-step-forward");
-      const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
+      const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward");
 
       fastPrevButton.on('pointerdown', () => {
         statefulVideo.changeState({ step: -1, fast: true });
@@ -297,23 +288,10 @@ export class StatefulVideo {
         statefulVideo.changeState({ fast: true });
       });
 
-      const copyButton = StatefulVideo.makeHudButton("Copy", "fas fa-copy");
-      const pasteButton = StatefulVideo.makeHudButton("Paste", "fas fa-paste");
-
-      copyButton.on('pointerdown', () => {
-        statefulVideo.flags.copyData();
-      });
-
-      pasteButton.on('pointerdown', () => {
-        statefulVideo.flags.pasteData();
-      });
-
       controlsContainer.append(fastPrevButton)
       controlsContainer.append(prevButton)
       controlsContainer.append(nextButton)
       controlsContainer.append(fastNextButton)
-      controlsContainer.append(copyButton)
-      controlsContainer.append(pasteButton)
 
       const selectContainer = $("<div class='ats-hud-select-container'></div>");
 
@@ -391,7 +369,11 @@ export class StatefulVideo {
 
     }
 
-    html.find(".col.middle").append(root);
+    Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
+
+    if (controlsContainer.children().length > 0) {
+      html.find(".col.middle").append(root);
+    }
 
   }
 
@@ -816,13 +798,17 @@ class Flags {
       [CONSTANTS.FPS_FLAG]: this.data.fps,
       [CONSTANTS.CURRENT_STATE_FLAG]: this.currentStateIndex
     });
+    ui.notifications.notify("The Kinemancer | Copied video state data")
   }
 
   pasteData() {
-    if (!copiedData) return;
+    const localCopyData = get(copiedData);
+    if (!localCopyData) return;
+    if (foundry.utils.isEmpty(localCopyData)) return;
     this.doc.update({
-      ...foundry.utils.deepClone(get(copiedData))
+      ...foundry.utils.deepClone(localCopyData)
     });
+    ui.notifications.notify("The Kinemancer | Pasted video state data")
   }
 
   updateData() {

@@ -33,9 +33,9 @@
   },
   "socket": true,
   "languages": [],
-  "url": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates",
-  "manifest": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/releases/latest/download/manifest.json",
-  "download": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/releases/latest/download/module.zip",
-  "readme": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/blob/master/README.md",
-  "bugs": "https://github.com/fantasycalendar/FoundryVTT-AnimatedTileStates/issues"
+  "url": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer",
+  "manifest": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/manifest.json",
+  "download": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/module.zip",
+  "readme": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/blob/master/README.md",
+  "bugs": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/issues"
 }

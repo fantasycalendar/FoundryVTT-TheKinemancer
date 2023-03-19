@@ -2,20 +2,25 @@ import "./styles/module.scss";
 
 import CONSTANTS from "./constants.js";
 
-import { StatefulVideo } from "./StatefulVideo.js";
+import { copiedData, StatefulVideo } from "./StatefulVideo.js";
 import SocketHandler from "./socket.js";
-import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 
 Hooks.once('init', async function () {
   registerLibwrappers();
   SocketHandler.initialize();
   StatefulVideo.registerHooks();
+
+  game.thekinemancer = {
+    updateState: (uuid, options) => StatefulVideo.changeVideoState(uuid, options),
+    StatefulVideo,
+    CONSTANTS,
+    copiedData,
+    lib
+  };
 });
 
 Hooks.once('ready', async function () {
-
-  StatefulVideoInterface.registerHooks();
 
   setTimeout(() => {
     StatefulVideo.determineCurrentDelegator();
@@ -33,10 +38,6 @@ Hooks.once('ready', async function () {
       });
     }
   });
-
-  game.ats = {
-    updateState: (uuid, options) => StatefulVideo.changeVideoState(uuid, options)
-  };
 
 });
 
