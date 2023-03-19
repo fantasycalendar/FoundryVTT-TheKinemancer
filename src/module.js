@@ -16,6 +16,8 @@ Hooks.once('init', async function () {
 Hooks.once('ready', async function () {
   if (game.modules.get("the-kinemancer-creator")?.active) return;
 
+  console.log('test')
+
   setTimeout(() => {
     StatefulVideo.determineCurrentDelegator();
   }, 250);
