@@ -1,5 +1,4 @@
 import CONSTANTS from "./constants.js";
-import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
@@ -10,7 +9,6 @@ const managedStatefulVideos = new Map();
 let currentDelegator = false;
 let delegateDebounce = false;
 
-export const copiedData = writable(false);
 const hudScale = writable(0);
 
 export class StatefulVideo {
@@ -258,138 +256,115 @@ export class StatefulVideo {
   static renderStatefulVideoHud(app, html) {
 
     const placeableDocument = app.object.document;
-    const statefulVideo = StatefulVideo.get(app.object.document.uuid);
+    const statefulVideo = StatefulVideo.get(placeableDocument.uuid);
+
+    if (!statefulVideo) return
 
     const root = $("<div class='ats-hud'></div>");
 
     const controlsContainer = $("<div class='ats-hud-controls-container'></div>")
 
-    const configButton = StatefulVideo.makeHudButton("Configure Video States", "the-kinemancer-icon", statefulVideo ? "margin-right: 40px;" : "");
-
-    configButton.on('pointerdown', () => {
-      StatefulVideoInterface.show(placeableDocument);
-    });
-
-    controlsContainer.append(configButton);
-
     root.append(controlsContainer);
 
-    if (statefulVideo) {
+    const fastPrevButton = StatefulVideo.makeHudButton("Go To Previous State", "fas fa-backward-fast");
+    const prevButton = StatefulVideo.makeHudButton("Queue Previous State", "fas fa-backward-step");
+    const nextButton = StatefulVideo.makeHudButton("Queue Next State", "fas fa-step-forward");
+    const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
 
-      const fastPrevButton = StatefulVideo.makeHudButton("Go To Previous State", "fas fa-backward-fast");
-      const prevButton = StatefulVideo.makeHudButton("Queue Previous State", "fas fa-backward-step");
-      const nextButton = StatefulVideo.makeHudButton("Queue Next State", "fas fa-step-forward");
-      const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
+    fastPrevButton.on('pointerdown', () => {
+      statefulVideo.changeState({ step: -1, fast: true });
+    });
 
-      fastPrevButton.on('pointerdown', () => {
-        statefulVideo.changeState({ step: -1, fast: true });
+    prevButton.on('pointerdown', () => {
+      statefulVideo.changeState({ step: -1 });
+    });
+
+    nextButton.on('pointerdown', () => {
+      statefulVideo.changeState();
+    });
+
+    fastNextButton.on('pointerdown', () => {
+      statefulVideo.changeState({ fast: true });
+    });
+
+    controlsContainer.append(fastPrevButton)
+    controlsContainer.append(prevButton)
+    controlsContainer.append(nextButton)
+    controlsContainer.append(fastNextButton)
+
+    const selectContainer = $("<div class='ats-hud-select-container'></div>");
+
+    for (const [index, state] of statefulVideo.flags.states.entries()) {
+      if (!state.icon) continue;
+      const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
+      stateBtn.on("pointerdown", () => {
+        statefulVideo.changeState({ state: index, fast: true });
       });
+      selectContainer.append(stateBtn);
+    }
 
-      prevButton.on('pointerdown', () => {
-        statefulVideo.changeState({ step: -1 });
-      });
+    const select = $("<select class='ats-stateful-video-ui-button'></select>");
+    select.on('change', function () {
+      statefulVideo.changeState({ state: Number($(this).val()), fast: true });
+    });
 
-      nextButton.on('pointerdown', () => {
-        statefulVideo.changeState();
-      });
+    for (const [index, state] of statefulVideo.flags.states.entries()) {
+      select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+    }
 
-      fastNextButton.on('pointerdown', () => {
-        statefulVideo.changeState({ fast: true });
-      });
+    const statefulVideoColor = lib.determineFileColor(statefulVideo.document.texture.src);
 
-      const copyButton = StatefulVideo.makeHudButton("Copy", "fas fa-copy");
-      const pasteButton = StatefulVideo.makeHudButton("Paste", "fas fa-paste");
+    const selectButtonContainer = $("<div></div>");
 
-      copyButton.on('pointerdown', () => {
-        statefulVideo.flags.copyData();
-      });
-
-      pasteButton.on('pointerdown', () => {
-        statefulVideo.flags.pasteData();
-      });
-
-      controlsContainer.append(fastPrevButton)
-      controlsContainer.append(prevButton)
-      controlsContainer.append(nextButton)
-      controlsContainer.append(fastNextButton)
-      controlsContainer.append(copyButton)
-      controlsContainer.append(pasteButton)
-
-      const selectContainer = $("<div class='ats-hud-select-container'></div>");
-
-      for (const [index, state] of statefulVideo.flags.states.entries()) {
-        if (!state.icon) continue;
-        const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
-        stateBtn.on("pointerdown", () => {
-          statefulVideo.changeState({ state: index, fast: true });
-        });
-        selectContainer.append(stateBtn);
-      }
-
-      const select = $("<select class='ats-stateful-video-ui-button'></select>");
-      select.on('change', function () {
-        statefulVideo.changeState({ state: Number($(this).val()), fast: true });
-      });
-
-      for (const [index, state] of statefulVideo.flags.states.entries()) {
-        select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
-      }
-
-      const statefulVideoColor = lib.determineFileColor(statefulVideo.document.texture.src);
-
-      const selectButtonContainer = $("<div></div>");
-
-      const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
+    const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
       ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
       ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
     </div>`);
 
-      const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+    const selectColorContainer = $(`<div class="ats-color-container"></div>`);
 
-      const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
-      lib.getWildCardFiles(baseFile).then((results) => {
-        const width = results.length * 34;
-        selectColorContainer.css({ left: width * -0.33, width });
-        for (const filePath of results) {
-          const { colorName, color } = lib.determineFileColor(filePath);
-          const button = $(`<div class="ats-color-button" style="${color}"></div>`)
-          if (!colorName) {
-            selectColorContainer.prepend(button);
-          } else {
-            selectColorContainer.append(button);
-          }
-          button.on("pointerdown", async () => {
-            selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
-            selectColorButton.trigger("pointerdown");
-            statefulVideo.document.update({
-              img: filePath
-            });
-          });
+    const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
+    lib.getWildCardFiles(baseFile).then((results) => {
+      const width = results.length * 34;
+      selectColorContainer.css({ left: width * -0.33, width });
+      for (const filePath of results) {
+        const { colorName, color } = lib.determineFileColor(filePath);
+        const button = $(`<div class="ats-color-button" style="${color}"></div>`)
+        if (!colorName) {
+          selectColorContainer.prepend(button);
+        } else {
+          selectColorContainer.append(button);
         }
-      });
+        button.on("pointerdown", async () => {
+          selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
+          selectColorButton.trigger("pointerdown");
+          statefulVideo.document.update({
+            img: filePath
+          });
+        });
+      }
+    });
 
-      selectColorButton.on('pointerdown', () => {
-        const newState = selectColorContainer.css('visibility') === "hidden"
-          ? "visible"
-          : "hidden";
-        selectColorContainer.css("visibility", newState);
-      });
+    selectColorButton.on('pointerdown', () => {
+      const newState = selectColorContainer.css('visibility') === "hidden"
+        ? "visible"
+        : "hidden";
+      selectColorContainer.css("visibility", newState);
+    });
 
-      selectButtonContainer.append(selectColorButton);
-      selectButtonContainer.append(selectColorContainer);
+    selectButtonContainer.append(selectColorButton);
+    selectButtonContainer.append(selectColorContainer);
 
-      selectContainer.append(select);
-      selectContainer.append(selectButtonContainer);
+    selectContainer.append(select);
+    selectContainer.append(selectButtonContainer);
 
-      root.append(selectContainer);
+    root.append(selectContainer);
 
-      statefulVideo.select = select;
-      statefulVideo.prevButton = prevButton;
-      statefulVideo.nextButton = nextButton;
+    statefulVideo.select = select;
+    statefulVideo.prevButton = prevButton;
+    statefulVideo.nextButton = nextButton;
 
-      statefulVideo.updateHudScale();
-
-    }
+    statefulVideo.updateHudScale();
 
     html.find(".col.middle").append(root);
 
@@ -807,22 +782,6 @@ class Flags {
       }
     }
     return documentFlags;
-  }
-
-  copyData() {
-    copiedData.set({
-      [CONSTANTS.STATES_FLAG]: this.data.states,
-      [CONSTANTS.FRAMES_FLAG]: this.data.frames,
-      [CONSTANTS.FPS_FLAG]: this.data.fps,
-      [CONSTANTS.CURRENT_STATE_FLAG]: this.currentStateIndex
-    });
-  }
-
-  pasteData() {
-    if (!copiedData) return;
-    this.doc.update({
-      ...foundry.utils.deepClone(get(copiedData))
-    });
   }
 
   updateData() {

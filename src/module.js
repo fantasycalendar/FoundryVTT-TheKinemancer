@@ -4,18 +4,17 @@ import CONSTANTS from "./constants.js";
 
 import { StatefulVideo } from "./StatefulVideo.js";
 import SocketHandler from "./socket.js";
-import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 
 Hooks.once('init', async function () {
+  if (game.modules.get("the-kinemancer-creator")?.active) return;
   registerLibwrappers();
   SocketHandler.initialize();
   StatefulVideo.registerHooks();
 });
 
 Hooks.once('ready', async function () {
-
-  StatefulVideoInterface.registerHooks();
+  if (game.modules.get("the-kinemancer-creator")?.active) return;
 
   setTimeout(() => {
     StatefulVideo.determineCurrentDelegator();
