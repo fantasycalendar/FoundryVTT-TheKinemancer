@@ -6,7 +6,6 @@
   import CONSTANTS from "../constants.js";
   import StateList from "./StateList.svelte";
   import { get, writable } from "svelte/store";
-  import Toggle from "svelte-toggle";
   import { createJsonFile, getVideoDuration, validateStates } from "../lib/lib.js";
   import { TJSDocument } from "@typhonjs-fvtt/runtime/svelte/store";
 
@@ -14,13 +13,13 @@
 
   const { application } = getContext("#external")
 
-  const tileDocument = application.options.tileDocument;
+  const placeableDocument = application.options.placeableDocument;
 
-  const doc = new TJSDocument(tileDocument);
+  const doc = new TJSDocument(placeableDocument);
 
-  let frames = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FRAMES_FLAG) ?? true);
-  let fps = foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.FPS_FLAG) ?? 25);
-  let statesStore = writable(foundry.utils.deepClone(getProperty(tileDocument, CONSTANTS.STATES_FLAG) ?? [{
+  let frames = foundry.utils.deepClone(getProperty(placeableDocument, CONSTANTS.FRAMES_FLAG) ?? true);
+  let fps = foundry.utils.deepClone(getProperty(placeableDocument, CONSTANTS.FPS_FLAG) ?? 25);
+  let statesStore = writable(foundry.utils.deepClone(getProperty(placeableDocument, CONSTANTS.STATES_FLAG) ?? [{
     id: randomID(),
     name: "New State",
     start: 0,
@@ -43,7 +42,7 @@
   }, 250)
 
   let actualDuration = null;
-  getVideoDuration(tileDocument.texture.src).then((videoDuration) => {
+  getVideoDuration(placeableDocument.texture.src).then((videoDuration) => {
     actualDuration = videoDuration;
   });
   $: {
@@ -78,12 +77,12 @@
       [CONSTANTS.FRAMES_FLAG]: frames,
       [CONSTANTS.FPS_FLAG]: fps
     };
-    tileDocument.update({
+    placeableDocument.update({
       ...data,
-      [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(tileDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1),
+      [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(placeableDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1),
       [CONSTANTS.UPDATED_FLAG]: Number(Date.now())
     });
-    createJsonFile(tileDocument, data);
+    createJsonFile(placeableDocument, data);
     return true;
   }
 
@@ -102,7 +101,7 @@
       [CONSTANTS.STATES_FLAG]: states,
       [CONSTANTS.FRAMES_FLAG]: frames,
       [CONSTANTS.FPS_FLAG]: fps,
-      [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(tileDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1)
+      [CONSTANTS.CURRENT_STATE_FLAG]: Math.min(getProperty(placeableDocument, CONSTANTS.CURRENT_STATE_FLAG), states.length - 1)
     }
   }
 

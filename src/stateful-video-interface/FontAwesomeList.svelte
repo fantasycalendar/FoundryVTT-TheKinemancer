@@ -1,15 +1,21 @@
 <script>
-
-  import { FONT_AWESOME_ICONS } from "../font-awesome-icons.js";
-  import { writable } from "svelte/store";
+  import { writable, get } from "svelte/store";
+  import { fas } from "@fortawesome/free-solid-svg-icons";
 
   export let selected;
 
-  const icons = writable(FONT_AWESOME_ICONS);
-  let filter = "";
+  const icons = writable(Object.values(fas).map(icon => icon.iconName));
 
-  $: filteredIcons = $icons.filter(icon => !filter || icon.toLowerCase().includes(filter.toLowerCase()))
-    .map(icon => `fas fa-${icon}`);
+  const filterIcons = foundry.utils.debounce(() => {
+    filteredIcons = get(icons).filter(icon => {
+        const parts = filter.split(" ");
+        return !filter || parts.every(part => icon.toLowerCase().includes(part.toLowerCase()))
+      })
+      .map(icon => `fas fa-${icon}`);
+  }, 200);
+
+  let filter = "";
+  let filteredIcons = get(icons).map(icon => `fas fa-${icon}`);
 
 </script>
 
@@ -18,7 +24,7 @@
   	event.stopPropagation();
   }
 }}>
-	<input type="text" bind:value={filter} placeholder="Type to search...">
+	<input type="text" bind:value={filter} on:change={() => { filterIcons(); }} placeholder="Type to search...">
 	<div class="ats-icon-container">
 		<div class="ats-icon" class:ats-selected-icon={!$selected} on:click={() => selected.set("")}>
 			<i class=""></i>

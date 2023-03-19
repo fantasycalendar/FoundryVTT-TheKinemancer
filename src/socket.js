@@ -2,10 +2,10 @@ import CONSTANTS from "./constants.js";
 
 export default class SocketHandler {
 
-  static UPDATE_TILE = "update-tile";
+  static UPDATE_PLACEABLE_DOCUMENT = "update-placeable-document";
 
   static handlers = {
-    [this.UPDATE_TILE]: this._updateTile
+    [this.UPDATE_PLACEABLE_DOCUMENT]: this._updatePlaceableDocument
   }
 
   static initialize() {
@@ -23,11 +23,11 @@ export default class SocketHandler {
     });
   }
 
-  static async _updateTile(data) {
+  static async _updatePlaceableDocument(data) {
     const { uuid, update, userId } = data;
     if (userId !== game.user.id) return;
-    const tileDocument = fromUuidSync(uuid);
-    return tileDocument.update(update);
+    const placeableDocument = fromUuidSync(uuid);
+    return placeableDocument.update(update);
   }
 
 }

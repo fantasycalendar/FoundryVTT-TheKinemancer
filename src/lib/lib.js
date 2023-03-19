@@ -169,12 +169,13 @@ export function getThumbnailVariations(url) {
   return Object.keys(CONST.IMAGE_FILE_EXTENSIONS).map(ext => url.replace(".webm", "." + ext));
 }
 
-export function getTileJsonPath(tileDocument) {
-  return decodeURI(tileDocument.texture.src).split("  ")[0].replace(".webm", "") + ".json";
+export function getVideoJsonPath(placeableDocument) {
+  return decodeURI(placeableDocument.texture.src).split("  ")[0]
+    .replace(".webm", "") + ".json";
 }
 
-export function createJsonFile(tileDocument, inData) {
-  const path = getTileJsonPath(tileDocument)
+export function createJsonFile(placeableDocument, inData) {
+  const path = getVideoJsonPath(placeableDocument)
   const splitPath = path.split('/');
   const serializedData = JSON.stringify(inData);
   const blob = new Blob([serializedData], { type: 'application/json' });

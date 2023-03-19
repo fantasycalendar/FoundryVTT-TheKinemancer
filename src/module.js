@@ -2,40 +2,40 @@ import "./styles/module.scss";
 
 import CONSTANTS from "./constants.js";
 
-import { StatefulTile } from "./StatefulTile.js";
+import { StatefulVideo } from "./StatefulVideo.js";
 import SocketHandler from "./socket.js";
-import { TileInterface } from "./tile-interface/tile-interface.js";
+import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 
 Hooks.once('init', async function () {
   registerLibwrappers();
   SocketHandler.initialize();
-  StatefulTile.registerHooks();
+  StatefulVideo.registerHooks();
 });
 
 Hooks.once('ready', async function () {
 
-  TileInterface.registerHooks();
+  StatefulVideoInterface.registerHooks();
 
   setTimeout(() => {
-    StatefulTile.determineCurrentDelegator();
+    StatefulVideo.determineCurrentDelegator();
   }, 250);
 
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
-      StatefulTile.getAll().forEach(tile => {
-        tile.video.pause();
+      StatefulVideo.getAll().forEach(statefulVideo => {
+        statefulVideo.video.pause();
       });
     } else {
-      StatefulTile.getAll().forEach(tile => {
-        tile.offset = Number(Date.now()) - tile.updated;
-        game.video.play(tile.video);
+      StatefulVideo.getAll().forEach(statefulVideo => {
+        statefulVideo.offset = Number(Date.now()) - statefulVideo.updated;
+        game.video.play(statefulVideo.video);
       });
     }
   });
 
   game.ats = {
-    updateState: (uuid, options) => StatefulTile.changeTileState(uuid, options)
+    updateState: (uuid, options) => StatefulVideo.changeVideoState(uuid, options)
   };
 
 });
@@ -104,17 +104,24 @@ function registerLibwrappers() {
 
   libWrapper.register(CONSTANTS.MODULE_NAME, 'Tile.prototype._destroy', function (wrapped) {
     if (this.isVideo) {
-      StatefulTile.tearDown(this.document.uuid);
+      StatefulVideo.tearDown(this.document.uuid);
+    }
+    return wrapped();
+  }, "MIXED");
+
+  libWrapper.register(CONSTANTS.MODULE_NAME, 'Token.prototype._destroy', function (wrapped) {
+    if (this.isVideo) {
+      StatefulVideo.tearDown(this.document.uuid);
     }
     return wrapped();
   }, "MIXED");
 
   libWrapper.register(CONSTANTS.MODULE_NAME, 'VideoHelper.prototype.play', async function (wrapped, video, options) {
-    for (const tile of StatefulTile.getAll().values()) {
-      if (video === tile.video) {
-        if (this.locked || tile.destroyed || tile.playing || tile.still) return;
+    for (const statefulVideo of StatefulVideo.getAll().values()) {
+      if (video === statefulVideo.video) {
+        if (this.locked || statefulVideo.destroyed || statefulVideo.playing || statefulVideo.still) return;
         if (window.document.hidden) return video.pause();
-        const newOptions = await tile.getVideoPlaybackState();
+        const newOptions = await statefulVideo.getVideoPlaybackState();
         if (!newOptions) return;
         return wrapped(video, newOptions);
       }

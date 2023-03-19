@@ -1,19 +1,19 @@
 import CONSTANTS from "./constants.js";
-import { TileInterface } from "./tile-interface/tile-interface.js";
+import { StatefulVideoInterface } from "./stateful-video-interface/stateful-video-interface.js";
 import * as lib from "./lib/lib.js";
 import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 import { get, writable } from "svelte/store";
 
-const tileHudMap = new Map();
-const managedStatefulTiles = new Map();
+const statefulVideoHudMap = new Map();
+const managedStatefulVideos = new Map();
 let currentDelegator = false;
 let delegateDebounce = false;
 
 export const copiedData = writable(false);
 const hudScale = writable(0);
 
-export class StatefulTile {
+export class StatefulVideo {
 
   constructor(document, texture) {
     this.document = document;
@@ -32,11 +32,11 @@ export class StatefulTile {
   }
 
   static setAllReady() {
-    this.getAll().forEach(tile => {
-      if (!tile.ready) {
-        tile.ready = true;
-        tile.flags.updateData();
-        game.video.play(tile.video);
+    this.getAll().forEach(statefulVideo => {
+      if (!statefulVideo.ready) {
+        statefulVideo.ready = true;
+        statefulVideo.flags.updateData();
+        game.video.play(statefulVideo.video);
       }
     });
   }
@@ -52,28 +52,28 @@ export class StatefulTile {
 
       // If the user isn't the delegator, they should clear their own info to avoid confusion
       if (!game.user.isGM && newDelegator !== game.user && lib.isGMConnected()) {
-        await game.user.unsetFlag(CONSTANTS.MODULE_NAME, CONSTANTS.FLAG_KEYS.DELEGATED_TILES);
+        await game.user.unsetFlag(CONSTANTS.MODULE_NAME, CONSTANTS.FLAG_KEYS.DELEGATED_STATEFUL_VIDEOS);
       }
 
       // If the delegator has changed to a non-GM, and the new delegator is you, whilst there are no GMs connected
       if (newDelegator !== currentDelegator && !newDelegator.isGM && newDelegator === game.user && !lib.isGMConnected()) {
 
-        // Grab all tile's current state
+        // Grab all stateful video's current state
         let updates = {};
-        StatefulTile.getAll().forEach(tile => {
-          updates[CONSTANTS.DELEGATED_TILES_FLAG + "." + tile.delegationUuid] = tile.flags.getData();
+        StatefulVideo.getAll().forEach(statefulVideo => {
+          updates[CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + statefulVideo.delegationUuid] = statefulVideo.flags.getData();
         });
 
         currentDelegator = newDelegator;
 
-        // Store the tile's current state on yourself
+        // Store the stateful video's current state on yourself
         await game.user.update(updates);
 
       }
 
       currentDelegator = newDelegator;
 
-      StatefulTile.setAllReady();
+      StatefulVideo.setAllReady();
 
     }, 100);
 
@@ -92,28 +92,27 @@ export class StatefulTile {
     let firstUpdate = true;
     Hooks.on('updateUser', (user, data) => {
 
-      // If the user wasn't updated with delegated tiles, exit
-      if (!hasProperty(data, CONSTANTS.DELEGATED_TILES_FLAG)) return;
+      // If the user wasn't updated with delegated stateful videos, exit
+      if (!hasProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG)) return;
 
       // If they were, but it was removed, exit
-      const updatedTiles = getProperty(data, CONSTANTS.DELEGATED_TILES_FLAG);
-      if (!updatedTiles) return;
+      const statefulVideos = getProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG);
+      if (!statefulVideos) return;
 
       // If the current delegator is a GM, don't do anything, they will handle updates
       if (currentDelegator.isGM) return;
 
-      // Otherwise, loop through each of the updated tiles
-      Object.keys(updatedTiles).forEach(key => {
-        // Get the stateful tile based on the UUID that was updated on the user
-        const [sceneId, tileId] = key.split("_");
-        const tile = StatefulTile.get(`Scene.${sceneId}.Tile.${tileId}`);
-        if (!tile) return;
+      // Otherwise, loop through each of the updated stateful videos
+      Object.keys(statefulVideos).forEach(key => {
+        // Get the stateful video based on the UUID that was updated on the user
+        const statefulVideo = StatefulVideo.get(`Scene.${key.split("_").join(".")}`);
+        if (!statefulVideo) return;
         // Call the update method, and pass the user that is the current delegator
-        StatefulTile.onUpdate(
-          tile.document,
-          // Construct a similar diff as normal tile updates would create
+        StatefulVideo.onUpdate(
+          statefulVideo.document,
+          // Construct a similar diff as normal video updates would create
           foundry.utils.mergeObject({
-            [CONSTANTS.FLAGS]: updatedTiles[key]
+            [CONSTANTS.FLAGS]: statefulVideos[key]
           }, {}),
           firstUpdate
         );
@@ -121,25 +120,44 @@ export class StatefulTile {
       firstUpdate = false;
     });
 
-    Hooks.on("renderTileHUD", (app, html) => {
-      tileHudMap.set(app.object.document.uuid, app);
-      StatefulTile.renderTileHUD(app, html);
+    Hooks.on("renderBasePlaceableHUD", (app, html) => {
+      statefulVideoHudMap.set(app.object.document.uuid, app);
+      StatefulVideo.renderStatefulVideoHud(app, html);
     });
 
-    Hooks.on("preUpdateTile", (tileDoc, data) => {
-      StatefulTile.onPreUpdate(tileDoc, data);
+    Hooks.on("preUpdateTile", (placeableDoc, data) => {
+      StatefulVideo.onPreUpdate(placeableDoc, data);
     });
 
-    Hooks.on("updateTile", (tileDoc, data) => {
-      StatefulTile.onUpdate(tileDoc, data);
+    Hooks.on("updateTile", (placeableDoc, data) => {
+      StatefulVideo.onUpdate(placeableDoc, data);
     });
 
-    Hooks.on("createTile", (tileDoc) => {
-      const path = lib.getTileJsonPath(tileDoc);
+    Hooks.on("createTile", (placeableDoc) => {
+      const path = lib.getVideoJsonPath(placeableDoc);
       fetch(path)
         .then(response => response.json())
         .then((result) => {
-          tileDoc.update(result);
+          placeableDoc.update(result);
+        })
+        .catch(err => {
+        });
+    });
+
+    Hooks.on("preUpdateToken", (placeableDoc, data) => {
+      StatefulVideo.onPreUpdate(placeableDoc, data);
+    });
+
+    Hooks.on("updateToken", (placeableDoc, data) => {
+      StatefulVideo.onUpdate(placeableDoc, data);
+    });
+
+    Hooks.on("createToken", (placeableDoc) => {
+      const path = lib.getVideoJsonPath(placeableDoc);
+      fetch(path)
+        .then(response => response.json())
+        .then((result) => {
+          placeableDoc.update(result);
         })
         .catch(err => {
         });
@@ -148,12 +166,13 @@ export class StatefulTile {
     Hooks.on("canvasReady", () => {
       hudScale.set(canvas.stage.scale.x);
       setTimeout(() => {
-        for (const placeableTile of canvas.tiles.placeables) {
-          if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) continue;
-          const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
-          if (!tile) return;
-          if (game?.video && tile.video) {
-            game.video.play(tile.video);
+        const placeableObjects = [...canvas.tiles.placeables, canvas.tokens.placeables];
+        for (const placeable of placeableObjects) {
+          if (!placeable.isVideo || !getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length) continue;
+          const statefulVideo = StatefulVideo.make(placeable.document, placeable.texture);
+          if (!statefulVideo) return;
+          if (game?.video && statefulVideo.video) {
+            game.video.play(statefulVideo.video);
           }
         }
       }, 200);
@@ -164,45 +183,53 @@ export class StatefulTile {
     });
 
     hudScale.subscribe(() => {
-      StatefulTile.getAll().forEach(tile => tile.updateHudScale());
+      StatefulVideo.getAll().forEach(statefulVideo => statefulVideo.updateHudScale());
     });
 
-    const refreshDebounce = foundry.utils.debounce((tile) => {
-      if (game?.video && tile.video) {
-        game.video.play(tile.video);
+    const refreshDebounce = foundry.utils.debounce((statefulVideo) => {
+      if (game?.video && statefulVideo.video) {
+        game.video.play(statefulVideo.video);
       }
     }, 200);
 
-    Hooks.on("refreshTile", (placeableTile) => {
-      if (!placeableTile.isVideo || !getProperty(placeableTile.document, CONSTANTS.STATES_FLAG)?.length) return;
-      const tile = StatefulTile.make(placeableTile.document, placeableTile.texture);
-      if (!tile) return;
-      tile.evaluateVisibility();
-      refreshDebounce(tile);
+    Hooks.on("refreshTile", (placeableObject) => {
+      if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+      const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
+      if (!statefulVideo) return;
+      statefulVideo.evaluateVisibility();
+      refreshDebounce(statefulVideo);
+    });
+
+    Hooks.on("refreshToken", (placeableObject) => {
+      if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+      const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
+      if (!statefulVideo) return;
+      statefulVideo.evaluateVisibility();
+      refreshDebounce(statefulVideo);
     });
 
   }
 
   static getAll() {
-    return managedStatefulTiles;
+    return managedStatefulVideos;
   }
 
   static get(uuid) {
-    return managedStatefulTiles.get(uuid) || false;
+    return managedStatefulVideos.get(uuid) || false;
   }
 
   static make(document, texture) {
-    const existingTile = this.get(document.uuid);
-    if (!existingTile?.app || existingTile?.app?._state <= Application.RENDER_STATES.CLOSED) {
+    const existingStatefulVideo = this.get(document.uuid);
+    if (!existingStatefulVideo?.app || existingStatefulVideo?.app?._state <= Application.RENDER_STATES.CLOSED) {
 
     }
-    if (existingTile) return existingTile;
-    const newTile = new this(document, texture);
-    managedStatefulTiles.set(newTile.uuid, newTile);
+    if (existingStatefulVideo) return existingStatefulVideo;
+    const newStatefulVideo = new this(document, texture);
+    managedStatefulVideos.set(newStatefulVideo.uuid, newStatefulVideo);
     if (currentDelegator) {
-      newTile.flags.updateData();
+      newStatefulVideo.flags.updateData();
     }
-    return newTile;
+    return newStatefulVideo;
   }
 
   get duration() {
@@ -210,14 +237,14 @@ export class StatefulTile {
   }
 
   static tearDown(uuid) {
-    const tile = StatefulTile.get(uuid);
-    if (!tile) return;
-    if (tile.timeout) clearTimeout(tile.timeout);
-    managedStatefulTiles.delete(uuid);
+    const statefulVideo = StatefulVideo.get(uuid);
+    if (!statefulVideo) return;
+    if (statefulVideo.timeout) clearTimeout(statefulVideo.timeout);
+    managedStatefulVideos.delete(uuid);
   }
 
   static makeHudButton(tooltip, icon, style = "") {
-    return $(`<div class="ats-hud-control-icon ats-tile-ui-button" style="${style}" data-tooltip-direction="UP" data-tooltip="${tooltip}">
+    return $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" style="${style}" data-tooltip-direction="UP" data-tooltip="${tooltip}">
       <i class="fas ${icon}"></i>
     </div>`);
   }
@@ -228,57 +255,57 @@ export class StatefulTile {
    * @param app
    * @param html
    */
-  static renderTileHUD(app, html) {
+  static renderStatefulVideoHud(app, html) {
 
-    const tileDocument = app.object.document;
-    const tile = StatefulTile.get(app.object.document.uuid);
+    const placeableDocument = app.object.document;
+    const statefulVideo = StatefulVideo.get(app.object.document.uuid);
 
     const root = $("<div class='ats-hud'></div>");
 
     const controlsContainer = $("<div class='ats-hud-controls-container'></div>")
 
-    const configButton = StatefulTile.makeHudButton("Configure Tile States", "the-kinemancer-icon", "margin-right: 40px;");
+    const configButton = StatefulVideo.makeHudButton("Configure Video States", "the-kinemancer-icon", statefulVideo ? "margin-right: 40px;" : "");
 
     configButton.on('pointerdown', () => {
-      TileInterface.show(tileDocument);
+      StatefulVideoInterface.show(placeableDocument);
     });
 
     controlsContainer.append(configButton);
 
     root.append(controlsContainer);
 
-    if (tile) {
+    if (statefulVideo) {
 
-      const fastPrevButton = StatefulTile.makeHudButton("Go To Previous State", "fas fa-backward-fast");
-      const prevButton = StatefulTile.makeHudButton("Queue Previous State", "fas fa-backward-step");
-      const nextButton = StatefulTile.makeHudButton("Queue Next State", "fas fa-step-forward");
-      const fastNextButton = StatefulTile.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
+      const fastPrevButton = StatefulVideo.makeHudButton("Go To Previous State", "fas fa-backward-fast");
+      const prevButton = StatefulVideo.makeHudButton("Queue Previous State", "fas fa-backward-step");
+      const nextButton = StatefulVideo.makeHudButton("Queue Next State", "fas fa-step-forward");
+      const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward", "margin-right: 40px;");
 
       fastPrevButton.on('pointerdown', () => {
-        tile.changeState({ step: -1, fast: true });
+        statefulVideo.changeState({ step: -1, fast: true });
       });
 
       prevButton.on('pointerdown', () => {
-        tile.changeState({ step: -1 });
+        statefulVideo.changeState({ step: -1 });
       });
 
       nextButton.on('pointerdown', () => {
-        tile.changeState();
+        statefulVideo.changeState();
       });
 
       fastNextButton.on('pointerdown', () => {
-        tile.changeState({ fast: true });
+        statefulVideo.changeState({ fast: true });
       });
 
-      const copyButton = StatefulTile.makeHudButton("Copy", "fas fa-copy");
-      const pasteButton = StatefulTile.makeHudButton("Paste", "fas fa-paste");
+      const copyButton = StatefulVideo.makeHudButton("Copy", "fas fa-copy");
+      const pasteButton = StatefulVideo.makeHudButton("Paste", "fas fa-paste");
 
       copyButton.on('pointerdown', () => {
-        tile.flags.copyData();
+        statefulVideo.flags.copyData();
       });
 
       pasteButton.on('pointerdown', () => {
-        tile.flags.pasteData();
+        statefulVideo.flags.pasteData();
       });
 
       controlsContainer.append(fastPrevButton)
@@ -290,36 +317,36 @@ export class StatefulTile {
 
       const selectContainer = $("<div class='ats-hud-select-container'></div>");
 
-      for (const [index, state] of tile.flags.states.entries()) {
+      for (const [index, state] of statefulVideo.flags.states.entries()) {
         if (!state.icon) continue;
-        const stateBtn = StatefulTile.makeHudButton(state.name, state.icon);
+        const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
         stateBtn.on("pointerdown", () => {
-          tile.changeState({ state: index, fast: true });
+          statefulVideo.changeState({ state: index, fast: true });
         });
         selectContainer.append(stateBtn);
       }
 
-      const select = $("<select class='ats-tile-ui-button'></select>");
+      const select = $("<select class='ats-stateful-video-ui-button'></select>");
       select.on('change', function () {
-        tile.changeState({ state: Number($(this).val()), fast: true });
+        statefulVideo.changeState({ state: Number($(this).val()), fast: true });
       });
 
-      for (const [index, state] of tile.flags.states.entries()) {
-        select.append(`<option ${index === tile.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+      for (const [index, state] of statefulVideo.flags.states.entries()) {
+        select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
       }
 
-      const tileColor = lib.determineFileColor(tile.document.texture.src);
+      const statefulVideoColor = lib.determineFileColor(statefulVideo.document.texture.src);
 
       const selectButtonContainer = $("<div></div>");
 
-      const selectColorButton = $(`<div class="ats-hud-control-icon ats-tile-ui-button" data-tooltip-direction="UP" data-tooltip="Change Tile Color">
-      ${tileColor.icon ? `<i class="fas ${tileColor.icon}"></i>` : ""}
-      ${tileColor.color ? `<div class="ats-color-button" style="${tileColor.color}"></div>` : ""}
+      const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
+      ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
+      ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
     </div>`);
 
       const selectColorContainer = $(`<div class="ats-color-container"></div>`);
 
-      const baseFile = decodeURI(tile.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
+      const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
       lib.getWildCardFiles(baseFile).then((results) => {
         const width = results.length * 34;
         selectColorContainer.css({ left: width * -0.33, width });
@@ -334,7 +361,7 @@ export class StatefulTile {
           button.on("pointerdown", async () => {
             selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
             selectColorButton.trigger("pointerdown");
-            tile.document.update({
+            statefulVideo.document.update({
               img: filePath
             });
           });
@@ -356,11 +383,11 @@ export class StatefulTile {
 
       root.append(selectContainer);
 
-      tile.select = select;
-      tile.prevButton = prevButton;
-      tile.nextButton = nextButton;
+      statefulVideo.select = select;
+      statefulVideo.prevButton = prevButton;
+      statefulVideo.nextButton = nextButton;
 
-      tile.updateHudScale();
+      statefulVideo.updateHudScale();
 
     }
 
@@ -381,69 +408,70 @@ export class StatefulTile {
     for (const [index, state] of this.flags.states.entries()) {
       this.select.append(`<option ${index === this.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`)
     }
+    this.updateHudScale();
   }
 
-  static onPreUpdate(tileDoc, changes) {
-    let statefulTile = StatefulTile.get(tileDoc.uuid);
-    if (hasProperty(changes, "texture.src") && statefulTile) {
-      statefulTile.newCurrentTime = statefulTile.video.currentTime * 1000;
+  static onPreUpdate(placeableDoc, changes) {
+    let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
+    if (hasProperty(changes, "texture.src") && statefulVideo) {
+      statefulVideo.newCurrentTime = statefulVideo.video.currentTime * 1000;
     }
   }
 
-  static onUpdate(tileDoc, changes, firstUpdate = false) {
-    let statefulTile = StatefulTile.get(tileDoc.uuid);
-    if (hasProperty(changes, "texture.src") && statefulTile) {
+  static onUpdate(placeableDoc, changes, firstUpdate = false) {
+    let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
+    if (hasProperty(changes, "texture.src") && statefulVideo) {
       setTimeout(() => {
-        statefulTile.texture = tileDoc.object.texture;
-        statefulTile.video = tileDoc.object.texture.baseTexture.resource.source;
-        statefulTile.still = false;
-        statefulTile.playing = false;
-        clearTimeout(statefulTile.timeout);
-        game.video.play(statefulTile.video);
+        statefulVideo.texture = placeableDoc.object.texture;
+        statefulVideo.video = placeableDoc.object.texture.baseTexture.resource.source;
+        statefulVideo.still = false;
+        statefulVideo.playing = false;
+        clearTimeout(statefulVideo.timeout);
+        game.video.play(statefulVideo.video);
       }, 100);
     }
     if (!hasProperty(changes, CONSTANTS.FLAGS)) return;
-    if (!statefulTile) {
-      if (!tileDoc.object.isVideo || !getProperty(tileDoc, CONSTANTS.STATES_FLAG)?.length) return;
-      statefulTile = StatefulTile.make(tileDoc, tileDoc.object.texture);
+    if (!statefulVideo) {
+      if (!placeableDoc.object.isVideo || !getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length) return;
+      statefulVideo = StatefulVideo.make(placeableDoc, placeableDoc.object.texture);
     }
-    statefulTile.flags.updateData();
-    Hooks.call("ats.updateState", tileDoc, statefulTile.flags.data, changes);
-    if (!statefulTile.flags.states.length) {
-      this.tearDown(tileDoc.uuid);
-      tileHudMap.get(tileDoc.uuid)?.render(true);
+    statefulVideo.flags.updateData();
+    Hooks.call("ats.updateState", placeableDoc, statefulVideo.flags.data, changes);
+    if (!statefulVideo.flags.states.length) {
+      this.tearDown(placeableDoc.uuid);
+      statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
       return;
     }
-    statefulTile.offset = Number(new Date()) - statefulTile.flags.updated;
+    statefulVideo.offset = Number(new Date()) - statefulVideo.flags.updated;
     if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
-      tileHudMap.get(tileDoc.uuid)?.render(true);
-      statefulTile.still = false;
-      statefulTile.playing = false;
-      clearTimeout(statefulTile.timeout);
-      game.video.play(statefulTile.video);
-      statefulTile.flags.data.queuedState = statefulTile.flags.determineNextStateIndex();
-      return tileDoc.update({
-        [CONSTANTS.QUEUED_STATE_FLAG]: statefulTile.flags.data.queuedState
+      statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
+      statefulVideo.still = false;
+      statefulVideo.playing = false;
+      clearTimeout(statefulVideo.timeout);
+      game.video.play(statefulVideo.video);
+      statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
+      return placeableDoc.update({
+        [CONSTANTS.QUEUED_STATE_FLAG]: statefulVideo.flags.data.queuedState
       });
     }
-    statefulTile.updateSelect();
+    statefulVideo.updateSelect();
     if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
-      if (statefulTile.nextButton) {
-        statefulTile.nextButton.removeClass("active");
+      if (statefulVideo.nextButton) {
+        statefulVideo.nextButton.removeClass("active");
       }
-      if (statefulTile.prevButton) {
-        statefulTile.prevButton.removeClass("active");
+      if (statefulVideo.prevButton) {
+        statefulVideo.prevButton.removeClass("active");
       }
-      statefulTile.still = false;
-      statefulTile.playing = false;
-      game.video.play(statefulTile.video);
+      statefulVideo.still = false;
+      statefulVideo.playing = false;
+      game.video.play(statefulVideo.video);
     }
   }
 
-  static async changeTileState(uuid, { state = null, step = 1, queue = false } = {}) {
-    const tile = fromUuidSync(uuid);
-    if (!tile) return false;
-    const flags = new Flags(tile);
+  static async changeVideoState(uuid, { state = null, step = 1, queue = false } = {}) {
+    const placeableDoc = fromUuidSync(uuid);
+    if (!placeableDoc) return false;
+    const flags = new Flags(placeableDoc);
     flags.updateData();
     if (!flags.states.length) {
       return false;
@@ -452,7 +480,7 @@ export class StatefulTile {
       if (!isRealNumber(state)) {
         return false;
       }
-      return tile.update({
+      return placeableDoc.update({
         [CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
         [CONSTANTS.PREVIOUS_STATE_FLAG]: flags.currentStateIndex,
         [CONSTANTS.CURRENT_STATE_FLAG]: state,
@@ -465,7 +493,7 @@ export class StatefulTile {
     if (queue && !isRealNumber(state)) {
       return false;
     }
-    return tile.update({
+    return placeableDoc.update({
       [CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
       [CONSTANTS.QUEUED_STATE_FLAG]: queue ? state : flags.getStateIndexFromSteps(step)
     });
@@ -479,7 +507,7 @@ export class StatefulTile {
     if (game.user.isGM) {
       return this.document.update(data);
     } else if (lib.getResponsibleGM()) {
-      return SocketHandler.emit(SocketHandler.UPDATE_TILE, {
+      return SocketHandler.emit(SocketHandler.UPDATE_PLACEABLE_DOCUMENT, {
         uuid: this.uuid,
         update: data,
         userId: lib.getResponsibleGM().id
@@ -492,8 +520,9 @@ export class StatefulTile {
         return [newKey[newKey.length - 1], value];
       }));
 
+    const key = `${this.document.parent.id}_${this.document.documentName}_${this.document.id}`;
     return game.user.update({
-      [`${CONSTANTS.DELEGATED_TILES_FLAG}.${this.document.parent.id}_${this.document.id}`]: deconstructedData
+      [`${CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG}.${key}`]: deconstructedData
     });
   }
 
@@ -713,7 +742,7 @@ class Flags {
   constructor(doc) {
     this.doc = doc;
     this.uuid = doc.uuid;
-    this.delegationUuid = this.uuid.split(".")[1] + "_" + this.uuid.split(".")[3];
+    this.delegationUuid = this.uuid.split(".").slice(1).join("_");
     this._data = false;
   }
 
@@ -772,7 +801,7 @@ class Flags {
   getData() {
     const documentFlags = getProperty(this.doc, CONSTANTS.FLAGS);
     if (currentDelegator && !currentDelegator.isGM) {
-      const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_TILES_FLAG + "." + this.delegationUuid);
+      const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + this.delegationUuid);
       if (userFlags?.updated && documentFlags?.updated && userFlags?.updated > documentFlags?.updated) {
         return userFlags;
       }
