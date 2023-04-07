@@ -339,7 +339,9 @@ export class StatefulVideo {
 
     Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
 
-    html.find(".col.middle").append(root);
+    if (root.children().length) {
+      html.find(".col.middle").append(root);
+    }
 
   }
 
