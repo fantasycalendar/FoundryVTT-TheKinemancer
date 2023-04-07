@@ -1,313 +1,266 @@
-.ats {
-
-  &-grid {
-    display: grid;
-    grid-template-columns: 20px 20px 177px 75px 75px 235px 20px 20px;
-    gap: 3px;
-    margin-bottom: 3px;
-
-    a {
-      text-align: center;
-    }
-
-    > div {
-      display: flex;
-      padding: 0.25rem;
-      justify-content: center;
-      align-items: center;
-      min-height: 28px;
-
-      > * {
-        width: 100%;
-      }
-
-      > img {
-        min-width: 20px;
-        min-height: 20px;
-        max-height: 20px;
-        max-width: 20px;
-        border-radius: 5px;
-        border: 1px solid rgba(0, 0, 0, 0.5);
-      }
-    }
-
-    .ats-column-flex {
-      flex-direction: column;
-    }
-  }
-
-  &-divider {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-    margin: 0.25rem 0;
-    padding: 0.25rem 0;
-  }
-
-  &-bottom-divider {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-    margin-bottom: 0.25rem;
-    padding-bottom: 0.25rem;
-  }
-
-  &-action-button {
-    text-align: center;
-  }
-
-  input[type="text"], input[type="number"], select {
-    height: 20px;
-  }
-
-  input[type="checkbox"] {
-    height: 16px;
-    width: 16px;
-    margin: 0;
-  }
-
-  &-hud {
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: absolute;
-    top: 100%;
-
-    .ats-hud-controls-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      margin-bottom: 0.5rem;
-    }
-
-    .ats-hud-select-container {
-
-      display: flex;
-      flex-direction: row;
-      width: auto;
-      height: 100%;
-      font-size: initial;
-      color: white;
-      pointer-events: all;
-
-      > select {
-        font-size: var(--font-size-28);
-        color: rgb(218, 218, 218);
-        border-radius: 8px;
-        height: 40px;
-        border: 1px solid #333;
-
-        &:focus {
-          box-shadow: none;
-        }
-
-        > option {
-          background: rgba(0, 0, 0, 0.6);
-        }
-      }
-
-      > div {
-        position: relative;
-      }
-
-    }
-
-    .ats-color-container {
-      position: absolute !important;
-      visibility: hidden;
-      display: flex;
-      max-width: 204px;
-      pointer-events: all;
-      flex-wrap: wrap;
-
-      box-sizing: content-box;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 0 10px var(--color-shadow-dark);
-      border: 1px solid #333;
-      border-radius: 8px;
-
-      > div {
-        flex: 1 0 30px;
-        max-width: 30px;
-        width: 30px;
-        max-height: 30px;
-        height: 30px;
-        margin: 2px;
-      }
-    }
-
-    .ats-color-button {
-      cursor: pointer;
-      width: 80%;
-      height: 80%;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &.ats-icon {
-        background-color: #23221d;
-      }
-    }
-
-    .ats-hud-control-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      max-width: 40px;
-      font-size: var(--font-size-28);
-      color: var(--color-text-light-3);
-      pointer-events: all;
-
-      &.active {
-        box-shadow: 0 0 10px inset rgb(255, 177, 0);
-      }
-    }
-
-    .ats-stateful-video-ui-button {
-      position: relative;
-      height: 40px;
-      max-height: 40px;
-      box-sizing: content-box;
-      flex: 0 0 40px;
-      margin: 8px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 0 10px var(--color-shadow-dark);
-      border: 1px solid #333;
-      border-radius: 8px;
-
-      > img {
-        padding: 3px;
-        border: 0;
-      }
-    }
-
-    .ats-sources-container {
-
-      pointer-events: all;
-      visibility: hidden;
-      display: flex;
-      flex-wrap: wrap;
-      max-width: 400px;
-      align-items: center;
-      margin: 8px;
-      font-size: var(--font-size-28);
-      color: rgb(218, 218, 218);
-      border-radius: 8px;
-      height: 40px;
-      border: 0;
-
-      &:focus {
-        box-shadow: none;
-      }
-
-      > option {
-        background: rgba(0, 0, 0, 0.6);
-      }
-
-    }
-
-  }
-
-}
-
-
-.filepicker .video-parent {
-  position: relative;
-}
-
-.filepicker .video-parent:after {
-  position: absolute;
-  top: calc(50% - 10px);
-  left: calc(50% - 10px);
-
-  font-weight: 900;
-  font-family: 'Font Awesome 5 Free';
-  content: '\f04b';
-
-  display: block;
-  color: white;
-  text-align: center;
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  text-shadow: 2px 2px 3px #00000090;
-
-  opacity: .8;
-
-  transition: opacity .2s;
-}
-
-.filepicker .thumbs-list .video-parent:after {
-  left: 18px;
-}
-
-.filepicker .video-parent:hover:after {
-  opacity: 0;
-}
-
-.filepicker .video-parent.-loading:hover:after {
-  opacity: .8;
-  content: '\f021';
-  animation: animation-preview-spin 1.5s linear infinite;
-}
-
-.filepicker .video-preview {
-  box-sizing: border-box;
-  border: 1px solid #000;
-  border-radius: 2px;
-  max-width: 100%;
-  position: relative;
-}
-
-.filepicker .tiles-list li .video-preview {
-  border: none;
-  margin: 0;
-  object-fit: contain;
-}
-
-.filepicker .images-list li .video-preview {
-  width: 100%;
-  height: 200px;
-  object-fit: contain;
-  object-position: 50% 50%;
-  border: none;
-}
-
-.filepicker .thumbs-list .video-preview {
-  flex: 0 0 48px;
-  object-fit: cover;
-  object-position: 50% 50%;
-  margin-right: 10px;
-  border: none;
-}
-
-@keyframes animation-preview-spin {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 @font-face {
-  font-family: 'kinemancer';
+  font-family: 'icomoon';
   src: url('assets/kinemancer.eot');
-  src: url('assets/kinemancer.eot?#iefix') format('embedded-opentype'),
-  url('assets/kinemancer.woff') format('woff'),
+  src: url('assets/kinemancer.eot#iefix') format('embedded-opentype'),
   url('assets/kinemancer.ttf') format('truetype'),
-  url('assets/kinemancer.svg#kinemancer') format('svg');
+  url('assets/kinemancer.woff') format('woff'),
+  url('assets/kinemancer.svg#icomoon') format('svg');
   font-weight: normal;
   font-style: normal;
+  font-display: block;
 }
 
-.the-kinemancer-icon:before {
-  font-family: 'kinemancer';
-  display: inline-block;
-  -webkit-font-smoothing: antialiased;
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'kinemancer' !important;
+  speak: never;
   font-style: normal;
+  font-weight: normal;
   font-variant: normal;
-  line-height: 2;
-  text-rendering: auto;
-  content: '\0041';
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-thekinemancer_icon_logo:before {
+  content: "\e900";
+}
+
+.icon-attack-combat-fight-explosion-hit-boom-nuclear-nuke-mushroom:before {
+  content: "\e901";
+}
+
+.icon-attack-combat-fight-explosion-hit-boom-spark1:before {
+  content: "\e902";
+}
+
+.icon-attack-combat-fight-explosion-hit-boom-spark2:before {
+  content: "\e903";
+}
+
+.icon-attack-combat-fight-explosion-hit-boom-spark3:before {
+  content: "\e904";
+}
+
+.icon-attack-combat-fight-protection-weapon-defense-shield1:before {
+  content: "\e905";
+}
+
+.icon-attack-combat-fight-protection-weapon-defense-shield2:before {
+  content: "\e906";
+}
+
+.icon-attack-combat-fight-weapon-blade-spear:before {
+  content: "\e907";
+}
+
+.icon-attack-combat-fight-weapon-blade-sword:before {
+  content: "\e908";
+}
+
+.icon-attack-combat-fight-weapon-blunt-club-stick:before {
+  content: "\e909";
+}
+
+.icon-attack-combat-fight-weapon-blunt-hand-fist:before {
+  content: "\e90a";
+}
+
+.icon-attack-combat-fight-weapon-blunt-mace:before {
+  content: "\e90b";
+}
+
+.icon-attack-combat-fight-weapon-claw-animal-wild:before {
+  content: "\e90c";
+}
+
+.icon-attack-combat-fight-weapon-claw-animal-wild2:before {
+  content: "\e90d";
+}
+
+.icon-attack-combat-fight-weapon-explosive-bomb-trigger:before {
+  content: "\e90e";
+}
+
+.icon-attack-combat-fight-weapon-explosive-mine-button-trigger:before {
+  content: "\e90f";
+}
+
+.icon-attack-combat-fight-weapon-gun-handgun-pistol:before {
+  content: "\e910";
+}
+
+.icon-attack-combat-fight-weapon-gun-rifle:before {
+  content: "\e911";
+}
+
+.icon-attack-combat-fight-weapon-gun-rifle-automatic:before {
+  content: "\e912";
+}
+
+.icon-attack-combat-fight-weapon-gun-sniper-rifle-crosshair-target:before {
+  content: "\e913";
+}
+
+.icon-attack-combat-fight-weapon-magic-spell-wand-wizard:before {
+  content: "\e914";
+}
+
+.icon-attack-combat-fight-weapon-throw-distant-bow-arrow:before {
+  content: "\e915";
+}
+
+.icon-attack-combat-fight-weapon-throw-shuriken-blade:before {
+  content: "\e916";
+}
+
+.icon-element-fire-flame-burn:before {
+  content: "\e917";
+}
+
+.icon-magic-dust-stars-spell:before {
+  content: "\e918";
+}
+
+.icon-magic-dust-stars-spell2:before {
+  content: "\e919";
+}
+
+.icon-magic-portal-swirl-reveal-apparition:before {
+  content: "\e91a";
+}
+
+.icon-magic-spell-fireball-meteor-explosion-boom:before {
+  content: "\e91b";
+}
+
+.icon-magic-spell-hand-wizard-dust:before {
+  content: "\e91c";
+}
+
+.icon-state-bolt-lightning-electric-boost:before {
+  content: "\e91d";
+}
+
+.icon-state-broken-break-damaged:before {
+  content: "\e91e";
+}
+
+.icon-state-dead-death-grave:before {
+  content: "\e91f";
+}
+
+.icon-state-dead-death-ko-face-faint:before {
+  content: "\e920";
+}
+
+.icon-state-dead-death-skull:before {
+  content: "\e921";
+}
+
+.icon-state-dead-death-skull-bones:before {
+  content: "\e922";
+}
+
+.icon-state-gear-mechanism:before {
+  content: "\e923";
+}
+
+.icon-state-gears-mechanism-thinking:before {
+  content: "\e924";
+}
+
+.icon-state-hidden-invisible-eye:before {
+  content: "\e925";
+}
+
+.icon-state-wounded-bandage-blood:before {
+  content: "\e926";
+}
+
+.icon-state-wounded-droplet-blood:before {
+  content: "\e927";
+}
+
+.icon-symbol-check-mark-ok-success:before {
+  content: "\e928";
+}
+
+.icon-symbol-dice-die-one:before {
+  content: "\e929";
+}
+
+.icon-symbol-dice-die-six:before {
+  content: "\e92a";
+}
+
+.icon-symbole-dice:before {
+  content: "\e92b";
+}
+
+.icon-symbol-exclamation-point-danger-warning1:before {
+  content: "\e92c";
+}
+
+.icon-symbol-exclamation-point-danger-warning2:before {
+  content: "\e92d";
+}
+
+.icon-symbol-failure-error-cross-x:before {
+  content: "\e92e";
+}
+
+.icon-symbol-minus-less:before {
+  content: "\e92f";
+}
+
+.icon-symbol-minus-minus-less:before {
+  content: "\e930";
+}
+
+.icon-symbol-plus-more:before {
+  content: "\e931";
+}
+
+.icon-symbol-plus-plus-more:before {
+  content: "\e932";
+}
+
+.icon-symbol-star-favorite:before {
+  content: "\e933";
+}
+
+.icon-symbol-success-trophy:before {
+  content: "\e934";
+}
+
+.icon-trap-trigger-beartrap:before {
+  content: "\e935";
+}
+
+.icon-weather-element-wind-air:before {
+  content: "\e936";
+}
+
+.icon-weather-sky-cloud:before {
+  content: "\e937";
+}
+
+.icon-weather-sky-night-moon:before {
+  content: "\e938";
+}
+
+.icon-weather-sky-rain-water-cloud:before {
+  content: "\e939";
+}
+
+.icon-weather-sky-snow-cold-element-winter:before {
+  content: "\e93a";
+}
+
+.icon-weather-sun-day-sky:before {
+  content: "\e93b";
 }

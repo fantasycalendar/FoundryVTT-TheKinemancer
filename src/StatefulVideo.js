@@ -107,14 +107,10 @@ export class StatefulVideo {
         const statefulVideo = StatefulVideo.get(`Scene.${key.split("_").join(".")}`);
         if (!statefulVideo) return;
         // Call the update method, and pass the user that is the current delegator
-        StatefulVideo.onUpdate(
-          statefulVideo.document,
-          // Construct a similar diff as normal video updates would create
+        StatefulVideo.onUpdate(statefulVideo.document, // Construct a similar diff as normal video updates would create
           foundry.utils.mergeObject({
             [CONSTANTS.FLAGS]: statefulVideos[key]
-          }, {}),
-          firstUpdate
-        );
+          }, {}), firstUpdate);
       });
       firstUpdate = false;
     });
@@ -137,7 +133,9 @@ export class StatefulVideo {
       fetch(path)
         .then(response => response.json())
         .then((result) => {
-          placeableDoc.update(result);
+          setTimeout(() => {
+            placeableDoc.update(result);
+          }, 500);
         })
         .catch(err => {
         });
@@ -187,6 +185,9 @@ export class StatefulVideo {
 
     const refreshDebounce = foundry.utils.debounce((statefulVideo) => {
       if (game?.video && statefulVideo.video) {
+        statefulVideo.updateVideo();
+        statefulVideo.playing = false;
+        statefulVideo.still = false;
         game.video.play(statefulVideo.video);
       }
     }, 200);
@@ -205,6 +206,7 @@ export class StatefulVideo {
       if (!statefulVideo) return;
       statefulVideo.evaluateVisibility();
       refreshDebounce(statefulVideo);
+
     });
 
   }
@@ -261,37 +263,7 @@ export class StatefulVideo {
 
     const root = $("<div class='ats-hud'></div>");
 
-    const controlsContainer = $("<div class='ats-hud-controls-container'></div>");
-
-    root.append(controlsContainer);
-
     if (statefulVideo) {
-
-      const fastPrevButton = StatefulVideo.makeHudButton("Go To Previous State", "fas fa-backward-fast");
-      const prevButton = StatefulVideo.makeHudButton("Queue Previous State", "fas fa-backward-step");
-      const nextButton = StatefulVideo.makeHudButton("Queue Next State", "fas fa-step-forward");
-      const fastNextButton = StatefulVideo.makeHudButton("Go To Next State", "fas fa-fast-forward");
-
-      fastPrevButton.on('pointerdown', () => {
-        statefulVideo.changeState({ step: -1, fast: true });
-      });
-
-      prevButton.on('pointerdown', () => {
-        statefulVideo.changeState({ step: -1 });
-      });
-
-      nextButton.on('pointerdown', () => {
-        statefulVideo.changeState();
-      });
-
-      fastNextButton.on('pointerdown', () => {
-        statefulVideo.changeState({ fast: true });
-      });
-
-      controlsContainer.append(fastPrevButton)
-      controlsContainer.append(prevButton)
-      controlsContainer.append(nextButton)
-      controlsContainer.append(fastNextButton)
 
       const selectContainer = $("<div class='ats-hud-select-container'></div>");
 
@@ -347,9 +319,7 @@ export class StatefulVideo {
       });
 
       selectColorButton.on('pointerdown', () => {
-        const newState = selectColorContainer.css('visibility') === "hidden"
-          ? "visible"
-          : "hidden";
+        const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
         selectColorContainer.css("visibility", newState);
       });
 
@@ -362,8 +332,6 @@ export class StatefulVideo {
       root.append(selectContainer);
 
       statefulVideo.select = select;
-      statefulVideo.prevButton = prevButton;
-      statefulVideo.nextButton = nextButton;
 
       statefulVideo.updateHudScale();
 
@@ -371,10 +339,13 @@ export class StatefulVideo {
 
     Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
 
-    if (controlsContainer.children().length > 0) {
-      html.find(".col.middle").append(root);
-    }
+    html.find(".col.middle").append(root);
 
+  }
+
+  updateVideo() {
+    this.texture = this.document.object.texture;
+    this.video = this.document.object.texture.baseTexture.resource.source;
   }
 
   updateHudScale() {
@@ -490,9 +461,7 @@ export class StatefulVideo {
       return this.document.update(data);
     } else if (lib.getResponsibleGM()) {
       return SocketHandler.emit(SocketHandler.UPDATE_PLACEABLE_DOCUMENT, {
-        uuid: this.uuid,
-        update: data,
-        userId: lib.getResponsibleGM().id
+        uuid: this.uuid, update: data, userId: lib.getResponsibleGM().id
       });
     }
 
@@ -556,9 +525,7 @@ export class StatefulVideo {
   determineStartTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
-    const currStart = lib.isRealNumber(currState?.start)
-      ? Number(currState?.start) * this.flags.fps
-      : (currState?.start ?? 0);
+    const currStart = lib.isRealNumber(currState?.start) ? Number(currState?.start) * this.flags.fps : (currState?.start ?? 0);
 
     switch (currStart) {
 
@@ -582,9 +549,7 @@ export class StatefulVideo {
   determineEndTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
-    const currEnd = lib.isRealNumber(currState?.end)
-      ? Number(currState?.end) * this.flags.fps
-      : (currState?.end ?? this.duration);
+    const currEnd = lib.isRealNumber(currState?.end) ? Number(currState?.end) * this.flags.fps : (currState?.end ?? this.duration);
 
     switch (currEnd) {
 
@@ -613,9 +578,7 @@ export class StatefulVideo {
   async getVideoPlaybackState() {
 
     if (!this.ready) return {
-      playing: false,
-      loop: false,
-      currentTime: 0
+      playing: false, loop: false, currentTime: 0
     };
 
     if (!this.flags?.states?.length || !this.document?.object) return;
@@ -688,9 +651,7 @@ export class StatefulVideo {
     }, loopDuration - offsetLoopTime);
 
     return {
-      playing: true,
-      loop: false,
-      offset: offsetStartTime / 1000
+      playing: true, loop: false, offset: offsetStartTime / 1000
     }
 
   }
@@ -710,9 +671,7 @@ export class StatefulVideo {
     this.offset = 0;
 
     return {
-      playing: true,
-      loop: false,
-      offset: startTime / 1000
+      playing: true, loop: false, offset: startTime / 1000
     }
 
   }

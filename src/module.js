@@ -18,6 +18,7 @@ Hooks.once('init', async function () {
     copiedData,
     lib
   };
+  
 });
 
 Hooks.once('ready', async function () {

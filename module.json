@@ -1,7 +1,7 @@
 {
   "id": "the-kinemancer",
   "title": "The Kinemancer",
-  "description": "",
+  "description": "<p>Bring life to your VTT Games with animated assets for tiles, overlays, tokens and more!</p><p style=\"margin-bottom:0.5rem;\"><a target=\"_blank\" href=\"https://www.thekinemancer.com/faq/\">FAQ</a> - <a target=\"_blank\" href=\"https://www.thekinemancer.com/front-view-animations/\">Animation Packs</a> - <a target=\"_blank\" href=\"https://www.thekinemancer.com/\">Website</a> - <a target=\"_blank\" href=\"https://discord.gg/zhaYaj5ejg\">Discord</a></p>",
   "version": "1.0.0",
   "library": "false",
   "manifestPlusVersion": "1.2.0",
@@ -12,9 +12,12 @@
   },
   "authors": [
     {
-      "name": "Wasp",
-      "url": "https://github.com/Haxxer",
-      "discord": "Wasp#2005"
+      "name": "The Kinemancer",
+      "url": "https://www.thekinemancer.com/"
+    },
+    {
+      "name": "Fantasy Computerworks",
+      "url": "https://github.com/fantasycalendar"
     }
   ],
   "esmodules": [
