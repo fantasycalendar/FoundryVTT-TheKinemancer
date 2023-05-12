@@ -1,6 +1,5 @@
 import CONSTANTS from "./constants.js";
 import * as lib from "./lib/lib.js";
-import { getSceneDelegator, isRealNumber } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 import { get, writable } from "svelte/store";
 
@@ -27,6 +26,7 @@ export class StatefulVideo {
     this.prevButton = false;
     this.select = false;
     this.newCurrentTime = null;
+    this.randomTimers = {};
     this.ready = !!currentDelegator;
   }
 
@@ -35,6 +35,7 @@ export class StatefulVideo {
       if (!statefulVideo.ready) {
         statefulVideo.ready = true;
         statefulVideo.flags.updateData();
+        statefulVideo.setupRandomTimers();
         game.video.play(statefulVideo.video);
       }
     });
@@ -47,7 +48,7 @@ export class StatefulVideo {
     delegateDebounce = foundry.utils.debounce(async () => {
 
       // When you first render a scene, determine which user should be the delegator
-      const newDelegator = getSceneDelegator();
+      const newDelegator = lib.getSceneDelegator();
 
       // If the user isn't the delegator, they should clear their own info to avoid confusion
       if (!game.user.isGM && newDelegator !== game.user && lib.isGMConnected()) {
@@ -276,13 +277,19 @@ export class StatefulVideo {
         selectContainer.append(stateBtn);
       }
 
-      const select = $("<select class='ats-stateful-video-ui-button'></select>");
-      select.on('change', function () {
-        statefulVideo.changeState({ state: Number($(this).val()), fast: true });
-      });
+      if (statefulVideo.flags.states.length) {
+        const select = $("<select class='ats-stateful-video-ui-button'></select>");
+        select.on('change', function () {
+          statefulVideo.changeState({ state: Number($(this).val()), fast: true });
+        });
 
-      for (const [index, state] of statefulVideo.flags.states.entries()) {
-        select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+        for (const [index, state] of statefulVideo.flags.states.entries()) {
+          select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+        }
+
+        selectContainer.append(select);
+
+        statefulVideo.select = select;
       }
 
       const statefulVideoColor = lib.determineFileColor(statefulVideo.document.texture.src);
@@ -290,19 +297,31 @@ export class StatefulVideo {
       const selectButtonContainer = $("<div></div>");
 
       const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
-      ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
-      ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
-    </div>`);
-
-      const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+        ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
+        ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
+      </div>`);
 
       const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
       lib.getWildCardFiles(baseFile).then((results) => {
+        results.push(baseFile.replace(".webm", "__spring.webm"));
+        if (results.length <= 1) return;
+        const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+
+        selectColorButton.on('pointerdown', () => {
+          const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
+          selectColorContainer.css("visibility", newState);
+        });
+
+        selectButtonContainer.append(selectColorButton);
+        selectButtonContainer.append(selectColorContainer);
+
+        selectContainer.append(selectButtonContainer);
+
         const width = results.length * 34;
         selectColorContainer.css({ left: width * -0.33, width });
         for (const filePath of results) {
-          const { colorName, color } = lib.determineFileColor(filePath);
-          const button = $(`<div class="ats-color-button" style="${color}"></div>`)
+          const { colorName, color, tooltip } = lib.determineFileColor(filePath);
+          const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
           if (!colorName) {
             selectColorContainer.prepend(button);
           } else {
@@ -318,20 +337,7 @@ export class StatefulVideo {
         }
       });
 
-      selectColorButton.on('pointerdown', () => {
-        const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
-        selectColorContainer.css("visibility", newState);
-      });
-
-      selectButtonContainer.append(selectColorButton);
-      selectButtonContainer.append(selectColorContainer);
-
-      selectContainer.append(select);
-      selectContainer.append(selectButtonContainer);
-
       root.append(selectContainer);
-
-      statefulVideo.select = select;
 
       statefulVideo.updateHudScale();
 
@@ -402,6 +408,8 @@ export class StatefulVideo {
       statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
       statefulVideo.still = false;
       statefulVideo.playing = false;
+      statefulVideo.clearRandomTimers();
+      statefulVideo.setupRandomTimers();
       clearTimeout(statefulVideo.timeout);
       game.video.play(statefulVideo.video);
       statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
@@ -432,7 +440,7 @@ export class StatefulVideo {
       return false;
     }
     if (state !== null && !queue) {
-      if (!isRealNumber(state)) {
+      if (!lib.isRealNumber(state)) {
         return false;
       }
       return placeableDoc.update({
@@ -442,10 +450,10 @@ export class StatefulVideo {
         [CONSTANTS.QUEUED_STATE_FLAG]: flags.determineNextStateIndex()
       });
     }
-    if (!isRealNumber(step)) {
+    if (!lib.isRealNumber(step)) {
       return false;
     }
-    if (queue && !isRealNumber(state)) {
+    if (queue && !lib.isRealNumber(state)) {
       return false;
     }
     return placeableDoc.update({
@@ -490,14 +498,16 @@ export class StatefulVideo {
   }
 
   async updateState(stateIndex) {
+    const nextState = this.flags.determineNextStateIndex(stateIndex);
     const updates = {
       [CONSTANTS.PREVIOUS_STATE_FLAG]: this.flags.currentStateIndex,
       [CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
-      [CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex)
+      [CONSTANTS.QUEUED_STATE_FLAG]: nextState
     };
     if (Hooks.call("ats.preUpdateCurrentState", this.document, this.flags.data, updates) === false) {
       return;
     }
+    this.setupRandomTimers(nextState);
     return this.update(updates);
   }
 
@@ -509,6 +519,8 @@ export class StatefulVideo {
     if (this.prevButton) {
       this.prevButton.removeClass("active");
     }
+
+    this.clearRandomTimers();
 
     if (!fast && this.flags.currentState.behavior !== CONSTANTS.BEHAVIORS.STILL) {
       if (this.nextButton && this.prevButton && state === null) {
@@ -522,6 +534,36 @@ export class StatefulVideo {
 
     return this.updateState(state ?? this.flags.currentStateIndex + step);
 
+  }
+
+  setupRandomTimers(nextState) {
+
+    if (!nextState) {
+      nextState = this.flags.determineNextStateIndex();
+    }
+
+    if (Array.isArray(nextState) && game.user === currentDelegator) {
+      for (const stateIndex of nextState) {
+        if (this.randomTimers[stateIndex]) continue;
+        const state = this.flags.states[stateIndex];
+        const delayStart = Number(state.randomStart) * 1000;
+        const delayEnd = Number(state.randomEnd) * 1000;
+        const delay = lib.randomIntegerBetween(delayStart, delayEnd);
+        let timerId = null;
+        timerId = setTimeout(() => {
+          delete this.randomTimers[stateIndex];
+          if (this.flags.currentStateIsRandom) return;
+          this.updateState(stateIndex);
+        }, delay)
+        this.randomTimers[stateIndex] = timerId;
+      }
+    }
+
+  }
+
+  clearRandomTimers() {
+    Object.values(this.randomTimers).forEach(timerId => clearTimeout(timerId));
+    this.randomTimers = {};
   }
 
   determineStartTime(stateIndex) {
@@ -633,7 +675,6 @@ export class StatefulVideo {
     this.video.pause();
 
     return false;
-
   }
 
   async handleLoopBehavior(startTime, endTime = 0) {
@@ -659,6 +700,10 @@ export class StatefulVideo {
   }
 
   async handleOnceBehavior(startTime, endTime) {
+
+    if (!this.flags.currentStateIsRandom) {
+      this.clearRandomTimers()
+    }
 
     this.setTimeout(async () => {
       let queuedState = this.flags.queuedStateIndex;
@@ -718,6 +763,10 @@ class Flags {
 
   get currentState() {
     return this.states[this.currentStateIndex];
+  }
+
+  get currentStateIsRandom() {
+    return this.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM || this.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF
   }
 
   get currentStateIndex() {
@@ -797,6 +846,16 @@ class Flags {
 
     switch (state?.behavior) {
 
+      case CONSTANTS.BEHAVIORS.STILL:
+      case CONSTANTS.BEHAVIORS.LOOP:
+        const nextStates = this.states.filter(s => {
+          return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
+        }).map(s => this.states.indexOf(s))
+        if (nextStates.length) {
+          return nextStates;
+        }
+        break;
+
       case CONSTANTS.BEHAVIORS.ONCE_NEXT:
         return this.states[index + 1] ? index + 1 : defaultIndex;
 
@@ -804,7 +863,12 @@ class Flags {
         return this.states[index - 1] ? index - 1 : defaultIndex;
 
       case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE:
-        return this.previousStateIndex;
+      case CONSTANTS.BEHAVIORS.RANDOM:
+        return stateIndex === this.previousStateIndex ? this.currentStateIndex : this.previousStateIndex;
+
+      case CONSTANTS.BEHAVIORS.RANDOM_IF:
+        const nextSpecific = this.getStateById(state.randomState);
+        return nextSpecific >= 0 ? nextSpecific : defaultIndex;
 
       case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
         const nextIndex = this.getStateById(state.nextState);

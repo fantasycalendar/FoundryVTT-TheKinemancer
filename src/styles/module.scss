@@ -32,7 +32,21 @@
     }
 
     .ats-column-flex {
+      display: flex;
       flex-direction: column;
+
+      & > * {
+        flex: 1;
+      }
+    }
+
+    .ats-row-flex {
+      display: flex;
+      flex-direction: row;
+
+      & > * {
+        flex: 1;
+      }
     }
   }
 

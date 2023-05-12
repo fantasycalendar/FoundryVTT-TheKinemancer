@@ -18,7 +18,7 @@ Hooks.once('init', async function () {
     copiedData,
     lib
   };
-  
+
 });
 
 Hooks.once('ready', async function () {
@@ -62,12 +62,21 @@ Hooks.on('renderFilePicker', (filePicker, html, options) => {
     const width = img.attr('width');
     const height = img.attr('height');
 
-    const thumbnailUrl = options.files.find(file => lib.getThumbnailVariations(path).includes(file.url))?.url;
-    if (thumbnailUrl) {
-      setTimeout(() => {
-        img.attr("src", thumbnailUrl);
-      }, 150)
-    }
+    new Promise(async (resolve) => {
+      let found = false;
+      const splitPath = path.split("/");
+      const file_name = splitPath.pop();
+      const variationPath = splitPath.join("/") + "/stills/" + file_name;
+      await fetch(variationPath)
+        .then((result) => {
+          if (!result.ok) return;
+          found = true;
+          setTimeout(() => {
+            img.attr("src", path);
+          }, 150);
+        });
+      resolve();
+    });
 
     const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
     video.hide();

@@ -47,6 +47,30 @@ export function isRealNumber(n) {
   return typeof num == 'number' && !isNaN(num) && isFinite(num);
 }
 
+/**
+ *  Returns a floating point number between a minimum and maximum value
+ *
+ * @param  {number}     min                     The minimum value
+ * @param  {number}     max                     The maximum value
+ * @return {number}                             A random value between the range given
+ */
+export function randomFloatBetween(min, max) {
+  const _max = Math.max(max, min);
+  const _min = Math.min(max, min);
+  return Math.random() * (_max - _min) + _min;
+}
+
+/**
+ *  Returns an integer between a minimum and maximum value
+ *
+ * @param  {number}     min                     The minimum value
+ * @param  {number}     max                     The maximum value
+ * @return {int}                                A random integer between the range given
+ */
+export function randomIntegerBetween(min, max) {
+  return Math.floor(randomFloatBetween(min, max));
+}
+
 export function transformNumber(num) {
   // Flip the input number
   const flippedNum = 1 - num;
@@ -153,14 +177,15 @@ export function determineFileColor(inFile) {
   const lowerCaseFile = decodeURI(inFile.toLowerCase());
 
   for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
-    if (lowerCaseFile.endsWith(`  ${colorName}.webm`)) {
-      return { colorName, color };
+    if (lowerCaseFile.endsWith(`__${colorName}.webm`)) {
+      return { colorName, color, tooltip: CONSTANTS.COLOR_NAME[colorName] };
     }
   }
 
   return {
     colorName: false,
-    color: CONSTANTS.COLOR_CODE["none"]
+    color: CONSTANTS.COLOR_CODE["none"],
+    tooltip: CONSTANTS.COLOR_NAME["none"]
   };
 
 }
