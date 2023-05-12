@@ -303,7 +303,6 @@ export class StatefulVideo {
 
       const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
       lib.getWildCardFiles(baseFile).then((results) => {
-        results.push(baseFile.replace(".webm", "__spring.webm"));
         if (results.length <= 1) return;
         const selectColorContainer = $(`<div class="ats-color-container"></div>`);
 
