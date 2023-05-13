@@ -301,7 +301,7 @@ export class StatefulVideo {
         ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
       </div>`);
 
-      const baseFile = decodeURI(statefulVideo.document.texture.src).split("  ")[0].replace(".webm", "") + "*.webm";
+      const baseFile = decodeURI(statefulVideo.document.texture.src).split("__")[0].replace(".webm", "") + "*.webm";
       lib.getWildCardFiles(baseFile).then((results) => {
         if (results.length <= 1) return;
         const selectColorContainer = $(`<div class="ats-color-container"></div>`);
@@ -497,16 +497,14 @@ export class StatefulVideo {
   }
 
   async updateState(stateIndex) {
-    const nextState = this.flags.determineNextStateIndex(stateIndex);
     const updates = {
       [CONSTANTS.PREVIOUS_STATE_FLAG]: this.flags.currentStateIndex,
       [CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
-      [CONSTANTS.QUEUED_STATE_FLAG]: nextState
+      [CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex)
     };
     if (Hooks.call("ats.preUpdateCurrentState", this.document, this.flags.data, updates) === false) {
       return;
     }
-    this.setupRandomTimers(nextState);
     return this.update(updates);
   }
 
@@ -535,27 +533,27 @@ export class StatefulVideo {
 
   }
 
-  setupRandomTimers(nextState) {
+  setupRandomTimers() {
 
-    if (!nextState) {
-      nextState = this.flags.determineNextStateIndex();
-    }
+    if (game.user !== currentDelegator) return;
 
-    if (Array.isArray(nextState) && game.user === currentDelegator) {
-      for (const stateIndex of nextState) {
-        if (this.randomTimers[stateIndex]) continue;
-        const state = this.flags.states[stateIndex];
-        const delayStart = Number(state.randomStart) * 1000;
-        const delayEnd = Number(state.randomEnd) * 1000;
-        const delay = lib.randomIntegerBetween(delayStart, delayEnd);
-        let timerId = null;
-        timerId = setTimeout(() => {
-          delete this.randomTimers[stateIndex];
-          if (this.flags.currentStateIsRandom) return;
+    for (const stateIndex of this.flags.determineNextRandomStates()) {
+      if (this.randomTimers[stateIndex]) continue;
+      const state = this.flags.states[stateIndex];
+      const delayStart = Number(state.randomStart) * 1000;
+      const delayEnd = Number(state.randomEnd) * 1000;
+      const delay = lib.randomIntegerBetween(delayStart, delayEnd);
+      let timerId = null;
+      timerId = setTimeout(() => {
+        delete this.randomTimers[stateIndex];
+        if (this.flags.currentStateIsRandom) return;
+        if (this.flags.currentStateIsStill) {
           this.updateState(stateIndex);
-        }, delay)
-        this.randomTimers[stateIndex] = timerId;
-      }
+        } else if (this.flags.currentStateIsLoop) {
+          this.queueState(stateIndex);
+        }
+      }, delay)
+      this.randomTimers[stateIndex] = timerId;
     }
 
   }
@@ -690,6 +688,7 @@ export class StatefulVideo {
         return this.updateState(this.flags.queuedStateIndex);
       }
       game.video.play(this.video);
+      this.setupRandomTimers();
     }, loopDuration - offsetLoopTime);
 
     return {
@@ -764,6 +763,14 @@ class Flags {
     return this.states[this.currentStateIndex];
   }
 
+  get currentStateIsStill() {
+    return this.currentState.behavior === CONSTANTS.BEHAVIORS.STILL || this.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN
+  }
+
+  get currentStateIsLoop() {
+    return this.currentState.behavior === CONSTANTS.BEHAVIORS.LOOP
+  }
+
   get currentStateIsRandom() {
     return this.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM || this.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF
   }
@@ -782,7 +789,15 @@ class Flags {
   }
 
   get fps() {
-    return this.data?.frames ? 1000 / (this.data?.fps || 25) : 1;
+    const type = this.data?.numberType ?? CONSTANTS.NUMBER_TYPES.FPS;
+    switch (type) {
+      case CONSTANTS.NUMBER_TYPES.MILLISECONDS:
+        return 1;
+      case CONSTANTS.NUMBER_TYPES.SECONDS:
+        return 0.001;
+      case CONSTANTS.NUMBER_TYPES.FRAMES:
+        return 1000 / (this.data?.fps || 25);
+    }
   }
 
   get queuedStateIndexIsDifferent() {
@@ -803,7 +818,7 @@ class Flags {
   copyData() {
     copiedData.set({
       [CONSTANTS.STATES_FLAG]: this.data.states,
-      [CONSTANTS.FRAMES_FLAG]: this.data.frames,
+      [CONSTANTS.NUMBER_TYPE_FLAG]: this.data.numberType,
       [CONSTANTS.FPS_FLAG]: this.data.fps,
       [CONSTANTS.CURRENT_STATE_FLAG]: this.currentStateIndex
     });
@@ -833,6 +848,23 @@ class Flags {
     return Math.max(0, Math.min(this.currentStateIndex + steps, this.data.states.length - 1));
   }
 
+  determineNextRandomStates(stateIndex = null) {
+
+    stateIndex ??= this.currentStateIndex;
+
+    const state = this.states[stateIndex];
+
+    const nextStates = this.states.filter(s => {
+      return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
+    }).map(s => this.states.indexOf(s))
+    if (nextStates.length) {
+      return nextStates;
+    }
+
+    return [Math.max(0, Math.min(stateIndex, this.states.length - 1))];
+
+  }
+
   determineNextStateIndex(stateIndex = null) {
 
     stateIndex ??= this.currentStateIndex;
@@ -845,16 +877,6 @@ class Flags {
 
     switch (state?.behavior) {
 
-      case CONSTANTS.BEHAVIORS.STILL:
-      case CONSTANTS.BEHAVIORS.LOOP:
-        const nextStates = this.states.filter(s => {
-          return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
-        }).map(s => this.states.indexOf(s))
-        if (nextStates.length) {
-          return nextStates;
-        }
-        break;
-
       case CONSTANTS.BEHAVIORS.ONCE_NEXT:
         return this.states[index + 1] ? index + 1 : defaultIndex;
 
@@ -863,7 +885,7 @@ class Flags {
 
       case CONSTANTS.BEHAVIORS.ONCE_PREVIOUS_ACTIVE:
       case CONSTANTS.BEHAVIORS.RANDOM:
-        return stateIndex === this.previousStateIndex ? this.currentStateIndex : this.previousStateIndex;
+        return this.currentStateIndex;
 
       case CONSTANTS.BEHAVIORS.RANDOM_IF:
         const nextSpecific = this.getStateById(state.randomState);
