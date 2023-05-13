@@ -43,17 +43,7 @@ Hooks.once('ready', async function () {
 });
 
 
-Hooks.on('renderFilePicker', (filePicker, html, options) => {
-  options.files.forEach(file => {
-    if (!file.url.endsWith(".webm")) return;
-    for (const variation of lib.getThumbnailVariations(file.url)) {
-      const elem = html.find(`[data-path="${variation}"]`);
-      if (elem.length) {
-        elem.remove();
-        return;
-      }
-    }
-  });
+Hooks.on('renderFilePicker', (filePicker, html) => {
 
   html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, imgElem) => {
     const img = $(imgElem);
