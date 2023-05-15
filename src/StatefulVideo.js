@@ -222,9 +222,6 @@ export class StatefulVideo {
 
   static make(document, texture) {
     const existingStatefulVideo = this.get(document.uuid);
-    if (!existingStatefulVideo?.app || existingStatefulVideo?.app?._state <= Application.RENDER_STATES.CLOSED) {
-
-    }
     if (existingStatefulVideo) return existingStatefulVideo;
     const newStatefulVideo = new this(document, texture);
     managedStatefulVideos.set(newStatefulVideo.uuid, newStatefulVideo);
@@ -235,7 +232,7 @@ export class StatefulVideo {
   }
 
   get duration() {
-    return this.video.duration * 1000;
+    return (this.video.duration * 1000) - this.flags.singleFrameDuration;
   }
 
   static tearDown(uuid) {
@@ -257,16 +254,16 @@ export class StatefulVideo {
    * @param app
    * @param html
    */
-  static renderStatefulVideoHud(app, html) {
+  static async renderStatefulVideoHud(app, html) {
 
     const placeableDocument = app.object.document;
     const statefulVideo = StatefulVideo.get(placeableDocument.uuid);
 
     const root = $("<div class='ats-hud'></div>");
 
-    if (statefulVideo) {
+    const selectContainer = $("<div class='ats-hud-select-container'></div>");
 
-      const selectContainer = $("<div class='ats-hud-select-container'></div>");
+    if (statefulVideo) {
 
       for (const [index, state] of statefulVideo.flags.states.entries()) {
         if (!state.icon) continue;
@@ -291,58 +288,60 @@ export class StatefulVideo {
 
         statefulVideo.select = select;
       }
-
-      const statefulVideoColor = lib.determineFileColor(statefulVideo.document.texture.src);
-
-      const selectButtonContainer = $("<div></div>");
-
-      const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
-        ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
-        ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
-      </div>`);
-
-      const baseFile = decodeURI(statefulVideo.document.texture.src).split("__")[0].replace(".webm", "") + "*.webm";
-      lib.getWildCardFiles(baseFile).then((results) => {
-        if (results.length <= 1) return;
-        const selectColorContainer = $(`<div class="ats-color-container"></div>`);
-
-        selectColorButton.on('pointerdown', () => {
-          const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
-          selectColorContainer.css("visibility", newState);
-        });
-
-        selectButtonContainer.append(selectColorButton);
-        selectButtonContainer.append(selectColorContainer);
-
-        selectContainer.append(selectButtonContainer);
-
-        const width = results.length * 34;
-        selectColorContainer.css({ left: width * -0.33, width });
-        for (const filePath of results) {
-          const { colorName, color, tooltip } = lib.determineFileColor(filePath);
-          const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
-          if (!colorName) {
-            selectColorContainer.prepend(button);
-          } else {
-            selectColorContainer.append(button);
-          }
-          button.on("pointerdown", async () => {
-            selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
-            selectColorButton.trigger("pointerdown");
-            statefulVideo.document.update({
-              img: filePath
-            });
-          });
-        }
-      });
-
-      root.append(selectContainer);
-
-      statefulVideo.updateHudScale();
-
     }
 
-    Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
+    const statefulVideoColor = lib.determineFileColor(placeableDocument.texture.src);
+
+    const selectButtonContainer = $("<div></div>");
+
+    const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
+      ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
+      ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
+    </div>`);
+
+    const baseFile = decodeURI(placeableDocument.texture.src).split("__")[0].replace(".webm", "") + "*.webm";
+    await lib.getWildCardFiles(baseFile).then((results) => {
+      if (results.length <= 1) return;
+      const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+
+      selectColorButton.on('pointerdown', () => {
+        const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
+        selectColorContainer.css("visibility", newState);
+      });
+
+      selectButtonContainer.append(selectColorButton);
+      selectButtonContainer.append(selectColorContainer);
+
+      selectContainer.append(selectButtonContainer);
+
+      const width = Math.min(204, results.length * 34);
+      selectColorContainer.css({ left: width * -0.37, width: width });
+      for (const filePath of results) {
+        const { colorName, color, tooltip } = lib.determineFileColor(filePath);
+        const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
+        if (!colorName) {
+          selectColorContainer.prepend(button);
+        } else {
+          selectColorContainer.append(button);
+        }
+        button.on("pointerdown", async () => {
+          selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
+          selectColorButton.trigger("pointerdown");
+          placeableDocument.update({
+            img: filePath
+          });
+        });
+      }
+    });
+
+    if (statefulVideo || selectButtonContainer.children().length) {
+      root.append(selectContainer);
+    }
+
+    if (statefulVideo) {
+      statefulVideo.updateHudScale();
+      Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
+    }
 
     if (root.children().length) {
       html.find(".col.middle").append(root);
@@ -566,7 +565,9 @@ export class StatefulVideo {
   determineStartTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
-    const currStart = lib.isRealNumber(currState?.start) ? Number(currState?.start) * this.flags.fps : (currState?.start ?? 0);
+    const currStart = lib.isRealNumber(currState?.start)
+      ? Number(currState?.start) * this.flags.durationMultiplier
+      : (currState?.start ?? 0);
 
     switch (currStart) {
 
@@ -590,7 +591,9 @@ export class StatefulVideo {
   determineEndTime(stateIndex) {
 
     const currState = this.flags.states?.[stateIndex];
-    const currEnd = lib.isRealNumber(currState?.end) ? Number(currState?.end) * this.flags.fps : (currState?.end ?? this.duration);
+    const currEnd = lib.isRealNumber(currState?.end)
+      ? Number(currState?.end) * this.flags.durationMultiplier
+      : (currState?.end ?? this.duration);
 
     switch (currEnd) {
 
@@ -676,7 +679,7 @@ export class StatefulVideo {
 
   async handleLoopBehavior(startTime, endTime = 0) {
 
-    const loopDuration = (endTime - startTime);
+    const loopDuration = (endTime - startTime) + this.flags.singleFrameDuration;
     const offsetLoopTime = this.offset % loopDuration;
     const offsetStartTime = (startTime + offsetLoopTime);
 
@@ -788,16 +791,24 @@ class Flags {
     return this.data.queuedState > -1 ? this.data.queuedState : null;
   }
 
-  get fps() {
+  get durationMultiplier() {
     const type = this.data?.numberType ?? CONSTANTS.NUMBER_TYPES.FPS;
     switch (type) {
       case CONSTANTS.NUMBER_TYPES.MILLISECONDS:
         return 1;
       case CONSTANTS.NUMBER_TYPES.SECONDS:
-        return 0.001;
+        return 1000;
       case CONSTANTS.NUMBER_TYPES.FRAMES:
-        return 1000 / (this.data?.fps || 25);
+        return 1000 / this.fps;
     }
+  }
+
+  get fps() {
+    return (this.data?.fps || 24);
+  }
+
+  get singleFrameDuration() {
+    return (1000 / this.fps);
   }
 
   get queuedStateIndexIsDifferent() {
