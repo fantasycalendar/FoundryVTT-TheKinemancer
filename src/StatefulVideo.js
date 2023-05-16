@@ -161,19 +161,22 @@ export class StatefulVideo {
         });
     });
 
+    let firstUserGesture = false;
+    let canvasReady = false
+    Hooks.once("canvasFirstUserGesture", () => {
+      firstUserGesture = true;
+      if (canvasReady) {
+        StatefulVideo.canvasReady();
+      }
+    });
+
     Hooks.on("canvasReady", () => {
-      hudScale.set(canvas.stage.scale.x);
-      setTimeout(() => {
-        const placeableObjects = [...canvas.tiles.placeables, canvas.tokens.placeables];
-        for (const placeable of placeableObjects) {
-          if (!placeable.isVideo || !getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length) continue;
-          const statefulVideo = StatefulVideo.make(placeable.document, placeable.texture);
-          if (!statefulVideo) return;
-          if (game?.video && statefulVideo.video) {
-            game.video.play(statefulVideo.video);
-          }
-        }
-      }, 200);
+      canvasReady = true;
+      if (firstUserGesture) {
+        StatefulVideo.canvasReady();
+      } else {
+        StatefulVideo.canvasNotReady();
+      }
     })
 
     Hooks.on("canvasPan", () => {
@@ -187,8 +190,6 @@ export class StatefulVideo {
     const refreshDebounce = foundry.utils.debounce((statefulVideo) => {
       if (game?.video && statefulVideo.video) {
         statefulVideo.updateVideo();
-        statefulVideo.playing = false;
-        statefulVideo.still = false;
         game.video.play(statefulVideo.video);
       }
     }, 200);
@@ -207,9 +208,32 @@ export class StatefulVideo {
       if (!statefulVideo) return;
       statefulVideo.evaluateVisibility();
       refreshDebounce(statefulVideo);
-
     });
 
+  }
+
+  static getValidPlaceables() {
+    return [...canvas.tiles.placeables, canvas.tokens.placeables].filter(placeable => {
+      return placeable.isVideo && getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length;
+    });
+  }
+
+  static canvasReady() {
+    hudScale.set(canvas.stage.scale.x);
+    for (const placeable of this.getValidPlaceables()) {
+      const statefulVideo = this.make(placeable.document, placeable.texture);
+      if (!statefulVideo) return;
+      if (game?.video && statefulVideo.video) {
+        game.video.play(statefulVideo.video);
+      }
+    }
+  }
+
+  static canvasNotReady() {
+    for (const placeable of this.getValidPlaceables()) {
+      placeable.renderable = false;
+      placeable.mesh.renderable = false;
+    }
   }
 
   static getAll() {
@@ -350,6 +374,7 @@ export class StatefulVideo {
   }
 
   updateVideo() {
+    if (!this.document.object) return;
     this.texture = this.document.object.texture;
     this.video = this.document.object.texture.baseTexture.resource.source;
   }
@@ -401,7 +426,7 @@ export class StatefulVideo {
       statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
       return;
     }
-    statefulVideo.offset = Number(new Date()) - statefulVideo.flags.updated;
+    statefulVideo.offset = Number(Date.now()) - statefulVideo.flags.updated;
     if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
       statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
       statefulVideo.still = false;
@@ -622,7 +647,7 @@ export class StatefulVideo {
   async getVideoPlaybackState() {
 
     if (!this.ready) return {
-      playing: false, loop: false, currentTime: 0
+      playing: false, loop: false, offset: 0
     };
 
     if (!this.flags?.states?.length || !this.document?.object) return;
@@ -680,7 +705,7 @@ export class StatefulVideo {
   async handleLoopBehavior(startTime, endTime = 0) {
 
     const loopDuration = (endTime - startTime) + this.flags.singleFrameDuration;
-    const offsetLoopTime = this.offset % loopDuration;
+    const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
     const offsetStartTime = (startTime + offsetLoopTime);
 
     this.offset = 0;
@@ -747,7 +772,7 @@ class Flags {
   }
 
   get offset() {
-    return this.data?.offset ?? 0;
+    return (Number(Date.now()) - this.updated) - this.singleFrameDuration;
   }
 
   get updated() {

@@ -18,7 +18,6 @@ Hooks.once('init', async function () {
     copiedData,
     lib
   };
-
 });
 
 Hooks.once('ready', async function () {
@@ -34,7 +33,7 @@ Hooks.once('ready', async function () {
       });
     } else {
       StatefulVideo.getAll().forEach(statefulVideo => {
-        statefulVideo.offset = Number(Date.now()) - statefulVideo.updated;
+        statefulVideo.offset = Number(Date.now()) - statefulVideo.flags.updated;
         game.video.play(statefulVideo.video);
       });
     }
@@ -56,15 +55,16 @@ Hooks.on('renderFilePicker', (filePicker, html) => {
       let found = false;
       const splitPath = path.split("/");
       const file_name = splitPath.pop();
-      const variationPath = splitPath.join("/") + "/stills/" + file_name;
-      await fetch(variationPath)
-        .then((result) => {
-          if (!result.ok) return;
+      const variationPath = splitPath.join("/") + "/stills/" + file_name.replace(".webm", ".webp");
+      try {
+        await FilePicker.browse("data", variationPath).then(() => {
           found = true;
           setTimeout(() => {
-            img.attr("src", path);
+            img.attr("src", variationPath);
           }, 150);
-        });
+        })
+      } catch (err) {
+      }
       resolve();
     });
 
@@ -128,6 +128,11 @@ function registerLibwrappers() {
       }
     }
     return wrapped(video, options);
+  }, "MIXED");
+
+  libWrapper.register(CONSTANTS.MODULE_NAME, 'VideoHelper.prototype._onFirstGesture', async function (wrapped, event) {
+    Hooks.callAll("canvasFirstUserGesture");
+    return wrapped(event);
   }, "MIXED");
 
 }
