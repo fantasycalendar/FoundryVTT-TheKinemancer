@@ -44,12 +44,20 @@ Hooks.once('ready', async function () {
 
 Hooks.on('renderFilePicker', (filePicker, html) => {
 
+  const regex = new RegExp(/^.*?the-kinemancer\/.+__(.+).webm$/, "g")
+
   html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, imgElem) => {
+
     const img = $(imgElem);
     const parent = img.closest('[data-path]');
     const path = parent.data('path');
     const width = img.attr('width');
     const height = img.attr('height');
+
+    if (path.match(regex)) {
+      parent.remove();
+      return;
+    }
 
     new Promise(async (resolve) => {
       let found = false;
@@ -122,9 +130,12 @@ function registerLibwrappers() {
       if (video === statefulVideo.video) {
         if (this.locked || statefulVideo.destroyed || statefulVideo.playing || statefulVideo.still) return;
         if (window.document.hidden) return video.pause();
-        const newOptions = await statefulVideo.getVideoPlaybackState();
+        const newOptions = statefulVideo.getVideoPlaybackState();
         if (!newOptions) return;
-        return wrapped(video, newOptions);
+        let time = performance.now();
+        const promise = await wrapped(video, newOptions);
+        // console.log(performance.now() - time)
+        return promise;
       }
     }
     return wrapped(video, options);

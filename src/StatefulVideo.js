@@ -20,7 +20,7 @@ export class StatefulVideo {
     this.offset = this.flags.offset;
     this.texture = texture;
     this.video = this.texture.baseTexture.resource.source;
-    this.timeout = false;
+    this.timeout = null;
     this.still = false;
     this.nextButton = false;
     this.prevButton = false;
@@ -263,6 +263,7 @@ export class StatefulVideo {
     const statefulVideo = StatefulVideo.get(uuid);
     if (!statefulVideo) return;
     if (statefulVideo.timeout) clearTimeout(statefulVideo.timeout);
+    statefulVideo.clearRandomTimers();
     managedStatefulVideos.delete(uuid);
   }
 
@@ -314,7 +315,7 @@ export class StatefulVideo {
       }
     }
 
-    const statefulVideoColor = lib.determineFileColor(placeableDocument.texture.src);
+    const statefulVideoColor = lib.determineFileColor(placeableDocument.texture?.src || "");
 
     const selectButtonContainer = $("<div></div>");
 
@@ -364,8 +365,9 @@ export class StatefulVideo {
 
     if (statefulVideo) {
       statefulVideo.updateHudScale();
-      Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
     }
+
+    Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
 
     if (root.children().length) {
       html.find(".col.middle").append(root);
@@ -442,6 +444,7 @@ export class StatefulVideo {
     }
     statefulVideo.updateSelect();
     if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
+      statefulVideo.setupRandomTimers();
       if (statefulVideo.nextButton) {
         statefulVideo.nextButton.removeClass("active");
       }
@@ -488,7 +491,13 @@ export class StatefulVideo {
   async update(data) {
     if (game.user !== currentDelegator) return;
 
-    data[CONSTANTS.UPDATED_FLAG] = Number(Date.now());
+    if ((data?.[CONSTANTS.PREVIOUS_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]))
+      || (data?.[CONSTANTS.CURRENT_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]))
+      || (data?.[CONSTANTS.QUEUED_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]))) {
+      data[CONSTANTS.UPDATED_FLAG] = Number(Date.now());
+    } else {
+      return;
+    }
 
     if (game.user.isGM) {
       return this.document.update(data);
@@ -551,7 +560,7 @@ export class StatefulVideo {
     }
 
     clearTimeout(this.timeout);
-    this.timeout = false;
+    this.timeout = null;
 
     return this.updateState(state ?? this.flags.currentStateIndex + step);
 
@@ -644,11 +653,13 @@ export class StatefulVideo {
     return hidden;
   }
 
-  async getVideoPlaybackState() {
+  getVideoPlaybackState() {
 
-    if (!this.ready) return {
-      playing: false, loop: false, offset: 0
-    };
+    if (!this.ready) {
+      return {
+        playing: false, loop: false, offset: 0
+      };
+    }
 
     if (!this.flags?.states?.length || !this.document?.object) return;
 
@@ -680,12 +691,12 @@ export class StatefulVideo {
   setTimeout(callback, waitDuration) {
     clearTimeout(this.timeout);
     this.timeout = setTimeout(() => {
-      this.timeout = false;
+      this.timeout = null;
       callback();
-    }, waitDuration);
+    }, Math.ceil(waitDuration));
   }
 
-  async handleStillBehavior(startTime) {
+  handleStillBehavior(startTime) {
 
     this.still = true;
 
@@ -696,15 +707,20 @@ export class StatefulVideo {
     this.video.addEventListener("seeked", fn);
 
     this.video.play();
-    this.video.currentTime = startTime / 1000;
+    this.video.currentTime = (startTime ?? 0) / 1000;
     this.video.pause();
 
     return false;
   }
 
-  async handleLoopBehavior(startTime, endTime = 0) {
+  handleLoopBehavior(startTime, endTime = 0) {
 
-    const loopDuration = (endTime - startTime) + this.flags.singleFrameDuration;
+    let loopDuration = (endTime - startTime) + this.flags.singleFrameDuration;
+
+    if ((startTime + loopDuration) > this.duration) {
+      loopDuration = (this.duration - startTime);
+    }
+
     const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
     const offsetStartTime = (startTime + offsetLoopTime);
 
@@ -725,7 +741,7 @@ export class StatefulVideo {
 
   }
 
-  async handleOnceBehavior(startTime, endTime) {
+  handleOnceBehavior(startTime, endTime) {
 
     if (!this.flags.currentStateIsRandom) {
       this.clearRandomTimers()
@@ -817,8 +833,7 @@ class Flags {
   }
 
   get durationMultiplier() {
-    const type = this.data?.numberType ?? CONSTANTS.NUMBER_TYPES.FPS;
-    switch (type) {
+    switch (this.data?.numberType ?? CONSTANTS.NUMBER_TYPES.FRAMES) {
       case CONSTANTS.NUMBER_TYPES.MILLISECONDS:
         return 1;
       case CONSTANTS.NUMBER_TYPES.SECONDS:
@@ -912,7 +927,6 @@ class Flags {
     const defaultIndex = this.states.findIndex(s => s.default);
 
     switch (state?.behavior) {
-
       case CONSTANTS.BEHAVIORS.ONCE_NEXT:
         return this.states[index + 1] ? index + 1 : defaultIndex;
 
