@@ -132,10 +132,7 @@ function registerLibwrappers() {
         if (window.document.hidden) return video.pause();
         const newOptions = statefulVideo.getVideoPlaybackState();
         if (!newOptions) return;
-        let time = performance.now();
-        const promise = await wrapped(video, newOptions);
-        // console.log(performance.now() - time)
-        return promise;
+        return wrapped(video, newOptions);
       }
     }
     return wrapped(video, options);
