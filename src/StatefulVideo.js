@@ -281,7 +281,8 @@ export class StatefulVideo {
    */
   static async renderStatefulVideoHud(app, html) {
 
-    const placeableDocument = app.object.document;
+    const placeable = app.object;
+    const placeableDocument = placeable.document;
     const statefulVideo = StatefulVideo.get(placeableDocument.uuid);
 
     const root = $("<div class='ats-hud'></div>");
@@ -352,9 +353,12 @@ export class StatefulVideo {
         button.on("pointerdown", async () => {
           selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
           selectColorButton.trigger("pointerdown");
-          placeableDocument.update({
+          await placeableDocument.update({
             img: filePath
           });
+          const hud = placeable instanceof Token ? canvas.tokens.hud : canvas.tokens.tiles;
+          placeable.control();
+          hud.bind(placeable);
         });
       }
     });
@@ -488,12 +492,16 @@ export class StatefulVideo {
     });
   }
 
+  static isDataValid(flags, data) {
+    return (data?.[CONSTANTS.PREVIOUS_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]))
+      || (data?.[CONSTANTS.CURRENT_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]))
+      || (data?.[CONSTANTS.QUEUED_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]))
+  }
+
   async update(data) {
     if (game.user !== currentDelegator) return;
 
-    if ((data?.[CONSTANTS.PREVIOUS_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]))
-      || (data?.[CONSTANTS.CURRENT_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]))
-      || (data?.[CONSTANTS.QUEUED_STATE_FLAG] && (this.flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]))) {
+    if (StatefulVideo.isDataValid(this.flags, data)) {
       data[CONSTANTS.UPDATED_FLAG] = Number(Date.now());
     } else {
       return;
