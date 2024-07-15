@@ -65,7 +65,7 @@ export default function registerFilePicker() {
 
 export function filePickerHandler(filePicker, html) {
 
-	html.find('img').each((idx, imgElem) => {
+	html.find('ol:not(.details-list) li img').each((idx, imgElem) => {
 
 		const img = $(imgElem);
 		const parent = img.closest('[data-path]');
@@ -78,7 +78,7 @@ export function filePickerHandler(filePicker, html) {
 
 		const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
 		video.hide();
-		parent.append(video);
+		parent.prepend(video);
 		const videoElem = video.get(0);
 		let playTimeout = null;
 
