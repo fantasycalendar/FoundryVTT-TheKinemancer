@@ -94,10 +94,10 @@ export class StatefulVideo {
 		Hooks.on('updateUser', (user, data) => {
 
 			// If the user wasn't updated with delegated stateful videos, exit
-			if (!hasProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG)) return;
+			if (!foundry.utils.hasProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG)) return;
 
 			// If they were, but it was removed, exit
-			const statefulVideos = getProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG);
+			const statefulVideos = foundry.utils.getProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG);
 			if (!statefulVideos) return;
 
 			// If the current delegator is a GM, don't do anything, they will handle updates
@@ -196,7 +196,7 @@ export class StatefulVideo {
 		}, 200);
 
 		Hooks.on("refreshTile", (placeableObject) => {
-			if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableObject.isVideo || !foundry.utils.getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
 			const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
 			if (!statefulVideo) return;
 			statefulVideo.evaluateVisibility();
@@ -204,7 +204,7 @@ export class StatefulVideo {
 		});
 
 		Hooks.on("refreshToken", (placeableObject) => {
-			if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableObject.isVideo || !foundry.utils.getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
 			const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
 			if (!statefulVideo) return;
 			statefulVideo.evaluateVisibility();
@@ -215,7 +215,7 @@ export class StatefulVideo {
 
 	static getValidPlaceables() {
 		return [...canvas.tiles.placeables, canvas.tokens.placeables].filter(placeable => {
-			return placeable.isVideo && getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length;
+			return placeable.isVideo && foundry.utils.getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length;
 		});
 	}
 
@@ -415,14 +415,15 @@ export class StatefulVideo {
 
 	static onPreUpdate(placeableDoc, changes) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
-		if (hasProperty(changes, "texture.src") && statefulVideo) {
+		const diff = foundry.utils.diffObject(placeableDoc, changes);
+		if (foundry.utils.hasProperty(diff, "texture.src") && statefulVideo) {
 			statefulVideo.newCurrentTime = statefulVideo.video.currentTime * 1000;
 		}
 	}
 
 	static onUpdate(placeableDoc, changes, firstUpdate = false) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
-		if (hasProperty(changes, "texture.src") && statefulVideo) {
+		if (foundry.utils.hasProperty(changes, "texture.src") && statefulVideo) {
 			setTimeout(() => {
 				statefulVideo.texture = placeableDoc.object.texture;
 				statefulVideo.video = placeableDoc.object.texture.baseTexture.resource.source;
@@ -432,9 +433,9 @@ export class StatefulVideo {
 				game.video.play(statefulVideo.video);
 			}, 100);
 		}
-		if (!hasProperty(changes, CONSTANTS.FLAGS)) return;
+		if (!foundry.utils.hasProperty(changes, CONSTANTS.FLAGS)) return;
 		if (!statefulVideo) {
-			if (!placeableDoc.object.isVideo || !getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableDoc.object.isVideo || !foundry.utils.getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length) return;
 			statefulVideo = StatefulVideo.make(placeableDoc, placeableDoc.object.texture);
 		}
 		statefulVideo.flags.updateData();
@@ -445,7 +446,7 @@ export class StatefulVideo {
 			return;
 		}
 		statefulVideo.offset = Number(Date.now()) - statefulVideo.flags.updated;
-		if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
+		if (foundry.utils.hasProperty(changes, CONSTANTS.STATES_FLAG)) {
 			statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
 			statefulVideo.still = false;
 			statefulVideo.playing = false;
@@ -459,7 +460,7 @@ export class StatefulVideo {
 			});
 		}
 		statefulVideo.updateSelect();
-		if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
+		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
 			statefulVideo.setupRandomTimers();
 			if (statefulVideo.nextButton) {
 				statefulVideo.nextButton.removeClass("active");
@@ -682,8 +683,11 @@ export class StatefulVideo {
 
 	evaluateVisibility() {
 		const hidden = this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN;
-		this.document.object.renderable = !hidden || game.user.isGM;
-		this.document.object.mesh.alpha = hidden ? (game.user.isGM ? 0.5 : 0.0) : this.document.alpha;
+		if (this.document.object) this.document.object.renderable = !hidden || game.user.isGM;
+		if (this.document.object.mesh) {
+			this.document.object.mesh.renderable = !hidden || game.user.isGM;
+			this.document.object.mesh.alpha = hidden ? (game.user.isGM ? 0.5 : 0.0) : this.document.alpha;
+		}
 		return hidden;
 	}
 
@@ -705,7 +709,7 @@ export class StatefulVideo {
 
 		if (!this.flags?.states?.length || !this.document?.object) return;
 
-		const startTime = this.newCurrentTime ?? this.determineStartTime(this.flags.currentStateIndex) ?? 0;
+		const startTime = this.newCurrentTime ?? this.determineStartTime(this.flags.currentStateIndex);
 		const endTime = this.determineEndTime(this.flags.currentStateIndex) ?? this.duration;
 		this.newCurrentTime = null;
 
@@ -848,11 +852,11 @@ class Flags {
 	}
 
 	get baseFile() {
-		return getProperty(this.doc, CONSTANTS.BASE_FILE_FLAG) ?? this.currentFile;
+		return foundry.utils.getProperty(this.doc, CONSTANTS.BASE_FILE_FLAG) ?? this.currentFile;
 	}
 
 	get folderPath() {
-		return getProperty(this.doc, CONSTANTS.FOLDER_PATH_FLAG) ?? lib.getFolder(this.baseFile);
+		return foundry.utils.getProperty(this.doc, CONSTANTS.FOLDER_PATH_FLAG) ?? lib.getFolder(this.baseFile);
 	}
 
 	get useFiles() {
@@ -936,9 +940,9 @@ class Flags {
 	}
 
 	getData() {
-		const documentFlags = getProperty(this.doc, CONSTANTS.FLAGS);
+		const documentFlags = foundry.utils.getProperty(this.doc, CONSTANTS.FLAGS);
 		if (currentDelegator && !currentDelegator.isGM) {
-			const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + this.delegationUuid);
+			const userFlags = foundry.utils.getProperty(currentDelegator, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + this.delegationUuid);
 			if (userFlags?.updated && documentFlags?.updated && userFlags?.updated > documentFlags?.updated) {
 				return userFlags;
 			}

@@ -34,7 +34,7 @@ export function getSceneDelegator() {
 	});
 
 	activeUsers.sort((a, b) => {
-		return (getProperty(b, CONSTANTS.UPDATED_FLAG) ?? 0) - (getProperty(a, CONSTANTS.UPDATED_FLAG) ?? 0);
+		return (foundry.utils.getProperty(b, CONSTANTS.UPDATED_FLAG) ?? 0) - (foundry.utils.getProperty(a, CONSTANTS.UPDATED_FLAG) ?? 0);
 	});
 
 	activeUsers.sort((a, b) => b.isGM - a.isGM);
@@ -215,4 +215,42 @@ export function getFolder(path) {
 		folderParts.pop();
 	}
 	return folderParts.join("/")
+}
+
+
+export function bytesToSize(bytes, decimals) {
+	if (bytes === 0) return '0 Bytes';
+	const k = 1024;
+	const dm = decimals < 0 ? 0 : decimals;
+	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+export function deltaTimeToString(deltaTime) {
+	const sec_num = deltaTime / 1000; // don't forget the second param
+	const hours = Math.floor(sec_num / 3600);
+	const minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+	const seconds = Math.floor(sec_num - (hours * 3600) - (minutes * 60));
+	const milliseconds = Math.floor(deltaTime);
+
+	let string = "";
+	if (hours) {
+		string += `${hours}h`
+	}
+	if (minutes) {
+		if (string.length) string += " ";
+		string += `${minutes}m`
+	}
+	if (seconds) {
+		if (string.length) string += " ";
+		string += `${seconds}s`
+	} else if (!hours && !minutes) {
+		string += `${milliseconds}ms`
+	}
+	return string;
+}
+
+export function wait(ms = 150) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -5,10 +5,12 @@ import CONSTANTS from "./constants.js";
 import { copiedData, StatefulVideo } from "./StatefulVideo.js";
 import SocketHandler from "./socket.js";
 import * as lib from "./lib/lib.js";
-import { getFolder } from "./lib/lib.js";
+import Settings from "./settings.js";
+import DownloaderApp from "./applications/downloader/downloader-app.js";
 
 Hooks.once('init', async function () {
 	registerLibwrappers();
+	Settings.initialize();
 	SocketHandler.initialize();
 	StatefulVideo.registerHooks();
 
@@ -43,7 +45,7 @@ Hooks.once('ready', async function () {
 	if (game.user.isGM) {
 		for (const scene of Array.from(game.scenes)) {
 			const updates = Array.from(scene.tiles).map(tile => {
-				if (!getProperty(tile, CONSTANTS.STATES_FLAG)?.length || getProperty(tile, CONSTANTS.BASE_FILE_FLAG)) return false;
+				if (!foundry.utils.getProperty(tile, CONSTANTS.STATES_FLAG)?.length || foundry.utils.getProperty(tile, CONSTANTS.BASE_FILE_FLAG)) return false;
 				return {
 					_id: tile.id,
 					[CONSTANTS.BASE_FILE_FLAG]: tile?.texture?.src,
@@ -56,31 +58,37 @@ Hooks.once('ready', async function () {
 		}
 	}
 
+	// DownloaderApp.show();
+
 });
 
 
 Hooks.on('renderFilePicker', (filePicker, html) => {
 
-	const regex = new RegExp(/^.*?the-kinemancer\/.+__(.+).webm$/, "g")
+	const colorVariantRegex = new RegExp(/^.*?the-kinemancer\/.+__(.+).webm$/, "g");
+	const thumbVariantRegex = new RegExp(/^.*?the-kinemancer\/.+_thumb.webp$/, "g");
 
-	html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, imgElem) => {
+	html.find('img').each((idx, imgElem) => {
 
 		const img = $(imgElem);
 		const parent = img.closest('[data-path]');
 		const path = parent.data('path');
-		const width = img.attr('width');
-		const height = img.attr('height');
 
-		if (path.match(regex)) {
+		if (!path.startsWith("the-kinemancer")) return;
+
+		if (path.match(colorVariantRegex) || path.match(thumbVariantRegex)) {
 			parent.remove();
 			return;
 		}
+
+		const width = img.attr('width');
+		const height = img.attr('height');
 
 		new Promise(async (resolve) => {
 			let found = false;
 			const splitPath = path.split("/");
 			const file_name = splitPath.pop();
-			const variationPath = splitPath.join("/") + "/stills/" + file_name.replace(".webm", ".webp");
+			const variationPath = splitPath.join("/") + "/" + file_name.replace(".webm", "_thumb.webp");
 			try {
 				await FilePicker.browse("data", variationPath).then(() => {
 					found = true;
