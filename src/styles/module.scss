@@ -248,6 +248,24 @@
   border: none;
 }
 
+.filepicker .ats-color-circle {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  border: 1px solid black;
+
+  &.ats-icon {
+    background-color: #23221d;
+  }
+}
+
 @keyframes animation-preview-spin {
   100% {
     transform: rotate(360deg);

@@ -7,8 +7,10 @@ import SocketHandler from "./socket.js";
 import * as lib from "./lib/lib.js";
 import Settings from "./settings.js";
 import DownloaderApp from "./applications/downloader/downloader-app.js";
+import registerFilePicker from "./filepicker.js";
 
 Hooks.once('init', async function () {
+
 	registerLibwrappers();
 	Settings.initialize();
 	SocketHandler.initialize();
@@ -21,6 +23,9 @@ Hooks.once('init', async function () {
 		copiedData,
 		lib
 	};
+
+	registerFilePicker();
+
 });
 
 Hooks.once('ready', async function () {
@@ -62,76 +67,25 @@ Hooks.once('ready', async function () {
 
 });
 
-
-Hooks.on('renderFilePicker', (filePicker, html) => {
-
-	const colorVariantRegex = new RegExp(/^.*?the-kinemancer\/.+__(.+).webm$/, "g");
-	const thumbVariantRegex = new RegExp(/^.*?the-kinemancer\/.+_thumb.webp$/, "g");
-
-	html.find('img').each((idx, imgElem) => {
-
-		const img = $(imgElem);
-		const parent = img.closest('[data-path]');
-		const path = parent.data('path');
-
-		if (!path.startsWith("the-kinemancer")) return;
-
-		if (path.match(colorVariantRegex) || path.match(thumbVariantRegex)) {
-			parent.remove();
-			return;
-		}
-
-		const width = img.attr('width');
-		const height = img.attr('height');
-
-		new Promise(async (resolve) => {
-			let found = false;
-			const splitPath = path.split("/");
-			const file_name = splitPath.pop();
-			const variationPath = splitPath.join("/") + "/" + file_name.replace(".webm", "_thumb.webp");
-			try {
-				await FilePicker.browse("data", variationPath).then(() => {
-					found = true;
-					setTimeout(() => {
-						img.attr("src", variationPath);
-					}, 150);
-				})
-			} catch (err) {
-			}
-			resolve();
-		});
-
-		const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
-		video.hide();
-		parent.append(video);
-		const videoElem = video.get(0);
-		let playTimeout = null;
-
-		parent.addClass('video-parent');
-
-		parent.on("mouseenter", () => {
-			if (!videoElem.src) {
-				parent.addClass(' -loading');
-				videoElem.addEventListener('loadeddata', () => {
-					parent.removeClass('-loading');
-				}, false);
-				videoElem.src = path;
-			}
-			img.hide();
-			video.show();
-			playTimeout = setTimeout(() => {
-				videoElem.currentTime = 0;
-				videoElem.play().catch(e => console.error(e));
-			}, !!videoElem.src ? 0 : 750);
-		}).on("mouseleave", () => {
-			clearTimeout(playTimeout);
-			videoElem.pause();
-			videoElem.currentTime = 0;
-			video.hide();
-			img.show();
-		});
-	});
-});
+// Hooks.on("getSceneControlButtons", (controls) => {
+//
+// 	const bar = controls.find((c) => c.name === "tiles");
+// 	bar.tools.push({
+// 		icon: "fas icon-thekinemancer_icon_logo",
+// 		name: "the-kinemancer",
+// 		title: "The Kinemancer Filebrowser",
+// 		button: true,
+// 		onClick: () => {
+// 			new KinemancerFilePicker({
+// 				type: "imagevideo",
+// 				displayMode: "tiles",
+// 				current: "the-kinemancer",
+// 				tileSize: true
+// 			}).render(true);
+// 		},
+// 	});
+//
+// });
 
 
 function registerLibwrappers() {
