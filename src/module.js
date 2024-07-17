@@ -28,6 +28,14 @@ Hooks.once('init', async function () {
 
 });
 
+Hooks.on("changeSidebarTab", (app) => {
+	const button = $("<button><i class='fas icon-thekinemancer_icon_logo'></i> The Kinemancer: Pack Downloader</button>");
+	button.on("click", () => {
+		DownloaderApp.show();
+	});
+	app.element.find("#settings-game").append(button)
+});
+
 Hooks.once('ready', async function () {
 
 	setTimeout(() => {
@@ -63,30 +71,7 @@ Hooks.once('ready', async function () {
 		}
 	}
 
-	// DownloaderApp.show();
-
 });
-
-// Hooks.on("getSceneControlButtons", (controls) => {
-//
-// 	const bar = controls.find((c) => c.name === "tiles");
-// 	bar.tools.push({
-// 		icon: "fas icon-thekinemancer_icon_logo",
-// 		name: "the-kinemancer",
-// 		title: "The Kinemancer Filebrowser",
-// 		button: true,
-// 		onClick: () => {
-// 			new KinemancerFilePicker({
-// 				type: "imagevideo",
-// 				displayMode: "tiles",
-// 				current: "the-kinemancer",
-// 				tileSize: true
-// 			}).render(true);
-// 		},
-// 	});
-//
-// });
-
 
 function registerLibwrappers() {
 
