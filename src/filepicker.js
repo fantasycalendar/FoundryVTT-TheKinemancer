@@ -1,4 +1,5 @@
 import * as lib from "./lib/lib.js";
+import CONSTANTS from "./constants.js";
 
 
 export default function registerFilePicker() {
@@ -7,7 +8,52 @@ export default function registerFilePicker() {
 
 	class KinemancerFilePicker extends FilePicker {
 
-		filesWithColorVariants = {}
+		filesWithColorVariants = {};
+		deepSearch = "";
+
+		async searchDir(dir, data) {
+
+			const results = await FilePicker.browse("data", `${dir}/*`, { wildcard: true });
+
+			const packFiles = results.files.filter(file => {
+				return !file.includes("__")
+					&& file.toLowerCase().endsWith(".webm")
+					&& (!this.deepSearch || file.toLowerCase().includes(this.deepSearch.toLowerCase()));
+			});
+
+			for (const file of packFiles) {
+
+				const fileName = file.split(".")[0];
+
+				const packColorVariantFiles = results.files.filter(variantFile => {
+					return variantFile.includes("__") && variantFile.startsWith(fileName);
+				});
+
+				const thumbnail = results.files.find(thumb => {
+					return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
+				});
+
+				this.filesWithColorVariants[file] = packColorVariantFiles.map(path => {
+					return lib.determineFileColor(path).color;
+				});
+
+				data.files.push({
+					name: file.split("/").pop(),
+					img: thumbnail || "icons/svg/video.svg",
+					url: file
+				});
+
+			}
+
+			if (this.deepSearch) {
+				for (const subDir of results.dirs) {
+					await this.searchDir(subDir, data);
+				}
+			}
+
+			return !!packFiles.length;
+
+		}
 
 		async getData(options = {}) {
 
@@ -15,49 +61,59 @@ export default function registerFilePicker() {
 
 			const data = await super.getData(options);
 
-			if (!data.target.startsWith("the-kinemancer")) return data;
+			if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
 
 			for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
 
-				const results = await FilePicker.browse("data", `${dir.path}/*.web*`, { wildcard: true });
+				const foundMatches = await this.searchDir(dir.path, data);
 
-				const packFiles = results.files.filter(file => {
-					return !file.includes("__") && file.toLowerCase().endsWith(".webm");
-				});
-				const packColorVariantFiles = results.files.filter(file => {
-					return file.includes("__");
-				});
-
-				if (packFiles.length) {
-
-					for (const file of packFiles) {
-
-						const thumbnail = results.files.find(thumb => {
-							return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
-						});
-
-						this.filesWithColorVariants[file] = packColorVariantFiles.map(path => {
-							return lib.determineFileColor(path).color;
-						});
-
-						data.files.push({
-							name: file.split("/").pop(),
-							img: thumbnail || "icons/svg/video.svg",
-							url: file
-						});
-
-					}
-
+				if (foundMatches) {
 					data.dirs.splice(index, 1);
-
 				}
 
+			}
+
+			if (this.deepSearch) {
+				data.dirs = [];
 			}
 
 			return data;
 		}
 
+		async _render(force = false, options = {}) {
+
+			let location = 0;
+			if (options.preserveSearch) {
+				location = this.element
+					.find('input[type="search"]')
+					.prop("selectionStart");
+			}
+
+			const result = await super._render(force, options);
+
+			if (options.preserveSearch) {
+				this.element
+					.find('input[type="search"]')
+					.trigger("focus")
+					.prop("selectionStart", location)
+					.prop("selectionEnd", location);
+			}
+
+			return result;
+		}
+
+		_onSearchFilter(event, query, rgx, html) {
+			if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
+				this.deepSearch = "";
+				return super._onSearchFilter(event, query, rgx, html);
+			}
+			if (query !== this.deepSearch) {
+				this.deepSearch = query;
+				this.render(true, { preserveSearch: true });
+			}
+		}
 	}
+
 
 	FilePicker = KinemancerFilePicker;
 
@@ -71,7 +127,7 @@ export function filePickerHandler(filePicker, html) {
 		const parent = img.closest('[data-path]');
 		const path = parent.data('path');
 
-		if (!path.startsWith("the-kinemancer") || !path.endsWith(".webm")) return;
+		if (!path.startsWith(CONSTANTS.MODULE_NAME) || !path.endsWith(".webm")) return;
 
 		const width = img.attr('width');
 		const height = img.attr('height');
