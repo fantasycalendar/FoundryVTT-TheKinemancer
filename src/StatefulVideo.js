@@ -131,6 +131,7 @@ export class StatefulVideo {
 		});
 
 		Hooks.on("createTile", (placeableDoc) => {
+			if (!lib.isResponsibleGM()) return;
 			const path = lib.getVideoJsonPath(placeableDoc);
 			fetch(path)
 				.then(response => response.json())
@@ -152,6 +153,7 @@ export class StatefulVideo {
 		});
 
 		Hooks.on("createToken", (placeableDoc) => {
+			if (!lib.isResponsibleGM()) return;
 			const path = lib.getVideoJsonPath(placeableDoc);
 			fetch(path)
 				.then(response => response.json())
