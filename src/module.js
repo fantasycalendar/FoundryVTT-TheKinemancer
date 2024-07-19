@@ -12,6 +12,7 @@ import registerFilePicker from "./filepicker.js";
 Hooks.once('init', async function () {
 
 	registerLibwrappers();
+	registerFilePicker();
 	Settings.initialize();
 	SocketHandler.initialize();
 	StatefulVideo.registerHooks();
@@ -23,8 +24,6 @@ Hooks.once('init', async function () {
 		copiedData,
 		lib
 	};
-
-	registerFilePicker();
 
 });
 

@@ -4,19 +4,18 @@
 	import ProgressBarStore from "../../lib/ProgressBarStore.js"
 	import ProgressBar from "../components/ProgressBar.svelte";
 	import Downloader from "../../lib/downloader.js";
-	import * as lib from "../../lib/lib.js";
 	import { writable } from "svelte/store";
 
 	export let elementRoot;
 
 	let step = 1;
-	let statusIcon = "";
 
 	const url = writable("");
+	const downloadedPaths = writable([]);
 
 	const downloading = Downloader.downloading;
+	const failed = Downloader.failed;
 	const totalSize = Downloader.totalSize;
-	const loadedSize = Downloader.loadedSize;
 
 	const progress = ProgressBarStore.percentStore;
 	const text = ProgressBarStore.textStore;
@@ -24,25 +23,29 @@
 
 	$: if ($downloading) step = 2;
 
-
 	async function downloadPack() {
-		statusIcon = "fa-spinner spinning"
 		Downloader.downloadPack($url.trim())
 			.then(async (result) => {
-				console.log(result)
 				if (result) {
-					statusIcon = "fa-check"
-					await lib.wait(1000);
+					step = 3;
+					downloadedPaths.set(Array.from(new Set(result.filesToCreate.map(file => file.path))));
 				}
-			}).catch(() => {
-			statusIcon = "fa-times"
-		});
+			});
 	}
 
 	function reset() {
-		statusIcon = "";
 		url.set("");
 		step = 1;
+	}
+
+	function openFile(path) {
+		const newPath = path.split("/");
+		newPath.pop();
+		new FilePicker({
+			type: "imagevideo",
+			current: newPath.join("/"),
+			displayMode: "tiles"
+		}).render(true);
 	}
 
 </script>
@@ -64,13 +67,13 @@
 					<input type="text" placeholder="https://www.thekinemancer.com/download/..." bind:value={$url}/>
 				</div>
 				<div>
-					<button type="button" on:click={downloadPack}>Download</button>
+					<button type="button" on:click={downloadPack} disabled="{!$url}">Download</button>
 				</div>
 			</div>
 
 		{/if}
 
-		{#if step === 2}
+		{#if step === 2 && !$failed}
 
 			<h1>Downloading pack...</h1>
 
@@ -84,6 +87,45 @@
 			{#if !$downloading}
 				<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
 			{/if}
+
+		{/if}
+
+		{#if step === 2 && $failed}
+
+			<h1>Failed to download pack!</h1>
+
+			<div class="release-metadata">
+				<div>Download ZIP Size:</div>
+				<div>{$totalSize}</div>
+			</div>
+
+			<ProgressBar progress={$progress} text={$text} textColor="white" backgroundColor="#9b0a0d"/>
+
+			<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
+
+		{/if}
+
+		{#if step === 3}
+
+			<h1>Pack downloaded!</h1>
+
+			<div class="release-metadata">
+				<div>Downloaded ZIP Size:</div>
+				<div>{$totalSize}</div>
+			</div>
+
+			<details>
+				<summary>Click to show all downloaded files</summary>
+				<ul>
+					{#each $downloadedPaths as path}
+						<li><a on:click={() => openFile(path)}>{path}</a></li>
+					{/each}
+				</ul>
+			</details>
+
+			<ProgressBar progress={$progress} text={$text}/>
+
+			<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
 
 		{/if}
 
@@ -135,36 +177,21 @@
     }
   }
 
+  details {
+    margin-bottom: 0.5rem;
+
+    ul {
+      max-height: 250px;
+      overflow: auto;
+
+      a {
+        color: var(--color-text-hyperlink);
+      }
+    }
+  }
+
   footer {
     display: flex;
-  }
-
-  .spinning {
-    animation-name: spin;
-    animation-duration: 1000ms;
-    animation-iteration-count: infinite;
-    animation-timing-function: linear;
-  }
-
-  .valid {
-    background: green;
-    color: white;
-    border: 1px solid #193a09;
-  }
-
-  .invalid {
-    background: #9b0a0d;
-    color: white;
-    border: 1px solid #3a0909;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
   }
 
 </style>

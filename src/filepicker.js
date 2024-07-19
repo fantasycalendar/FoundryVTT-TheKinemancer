@@ -1,123 +1,158 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
+import GameSettings from "./settings.js";
 
 
 export default function registerFilePicker() {
 
 	Hooks.on('renderFilePicker', filePickerHandler);
 
-	class KinemancerFilePicker extends FilePicker {
+	FilePicker = KinemancerFilePicker;
 
-		filesWithColorVariants = {};
-		filesWithWebmThumbnails = {};
-		deepSearch = "";
+}
 
-		async searchDir(dir, data) {
+class KinemancerFilePicker extends FilePicker {
 
-			const results = await FilePicker.browse("data", `${dir}/*`, { wildcard: true });
+	filesWithColorVariants = {};
+	filesWithWebmThumbnails = {};
+	tags = {};
+	deepSearch = "";
 
-			// Gather the main files in the pack
-			const packFiles = results.files.filter(file => {
-				return !file.includes("__")
-					&& !file.includes("_thumb")
-					&& file.toLowerCase().endsWith(".webm")
+	async searchDir(dir, data, validPacks) {
+
+		const results = await FilePicker.browse("data", `${dir}/*`, { wildcard: true });
+
+		// Gather the main files in the pack
+		const packFiles = results.files.filter(file => {
+			return !file.includes("__")
+				&& !file.includes("_thumb")
+				&& file.toLowerCase().endsWith(".webm")
+		});
+
+		for (const file of packFiles) {
+
+			const fileWithoutExtension = file.split(".")[0];
+			let dir = fileWithoutExtension.split("/");
+			dir.pop();
+			dir = dir.join("/")
+
+			if (validPacks && !validPacks.has(dir)) continue;
+
+			// Find the color variants
+			const colorVariants = results.files.filter(variantFile => {
+				return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
+			}).map(path => {
+				return lib.determineFileColor(path);
 			});
 
-			for (const file of packFiles) {
-
-				const fileWithoutExtension = file.split(".")[0];
-
-				// Find the color variants
-				const colorVariants = results.files.filter(variantFile => {
-					return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
-				}).map(path => {
-					return lib.determineFileColor(path);
-				});
-
-				if (this.deepSearch) {
-					const parts = file.split("/");
-					const fileName = parts.pop().split(".")[0].toLowerCase();
-					const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
-					if (!searchParts.every(part => {
-						if (part.startsWith("color:")) {
-							return colorVariants.some(color => color.colorName.includes(part.split(":")[1]))
-						}
-						return fileName.includes(part)
-					})) continue;
-				}
-
-				// Try to find the animated thumbnail webm file
-				this.filesWithWebmThumbnails[file] = results.files.find(thumbWebm => {
-					return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
-				});
-
-				// Get the static webp thumbnail
-				const thumbnail = results.files.find(thumb => {
-					return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
-				});
-
-				this.filesWithColorVariants[file] = colorVariants;
-
-				data.files.push({
-					name: file.split("/").pop(),
-					img: thumbnail || "icons/svg/video.svg",
-					url: file
-				});
-
-			}
-
 			if (this.deepSearch) {
-				for (const subDir of results.dirs) {
-					await this.searchDir(subDir, data);
-				}
+				const parts = file.split("/");
+				const fileName = parts.pop().split(".")[0].toLowerCase();
+				const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
+				if (!searchParts.every(part => {
+					if (part.startsWith("color:")) {
+						return colorVariants.some(color => color.colorName.includes(part.split(":")[1]))
+					}
+					return fileName.includes(part)
+				})) continue;
 			}
 
-			return !!packFiles.length;
+			// Try to find the animated thumbnail webm file
+			this.filesWithWebmThumbnails[file] = results.files.find(thumbWebm => {
+				return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
+			});
+
+			// Get the static webp thumbnail
+			const thumbnail = results.files.find(thumb => {
+				return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
+			});
+
+			this.filesWithColorVariants[file] = colorVariants;
+
+			data.files.push({
+				name: file.split("/").pop(),
+				img: thumbnail || "icons/svg/video.svg",
+				url: file
+			});
 
 		}
 
-		async getData(options = {}) {
-
-			this.filesWithColorVariants = {};
-			this.filesWithWebmThumbnails = {};
-
-			const data = await super.getData(options);
-
-			if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
-
-			if (this.deepSearch) {
-				data.files = [];
+		if (this.deepSearch || validPacks) {
+			for (const subDir of results.dirs) {
+				await this.searchDir(subDir, data, validPacks);
 			}
-
-			for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
-
-				const foundMatches = await this.searchDir(dir.path, data);
-
-				if (foundMatches) {
-					data.dirs.splice(index, 1);
-				}
-
-			}
-
-			if (this.deepSearch) {
-				data.dirs = [];
-			}
-
-			return data;
 		}
 
-		async _render(force = false, options = {}) {
+		return !!packFiles.length;
 
-			let location = 0;
-			let value = "";
+	}
+
+	async getData(options = {}) {
+
+		this.filesWithColorVariants = {};
+		this.filesWithWebmThumbnails = {};
+
+		const data = await super.getData(options);
+
+		if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
+
+		const validPacks = foundry.utils.isEmpty(this.tags) ? false : new Set();
+		const blackListed = new Set();
+		if (validPacks) {
+			const packTags = Object.entries(GameSettings.PACK_TAGS.get());
+			Object.entries(this.tags).forEach(([tag, filter]) => {
+				for (const [dir, tags] of packTags) {
+					if (filter) {
+						const packHasTag = tags.some(packTag => packTag === tag);
+						if (!packHasTag) continue;
+						if (!blackListed.has(dir)) validPacks.add(dir);
+					} else {
+						blackListed.add(dir);
+						validPacks.delete(dir);
+					}
+				}
+			})
+		}
+
+		if (this.deepSearch || validPacks) {
+			data.files = [];
+		}
+
+		for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
+
+			const foundMatches = await this.searchDir(dir.path, data, validPacks);
+
+			if (foundMatches) {
+				data.dirs.splice(index, 1);
+			}
+
+		}
+
+		if (this.deepSearch || validPacks) {
+			data.dirs = [];
+		}
+
+		return data;
+	}
+
+	async _render(force = false, options = {}) {
+
+		let location = 0;
+		let value = "";
+
+		if (this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
+
 			if (options.preserveSearch) {
 				const searchElem = this.element.find('input[type="search"]');
 				location = searchElem.prop("selectionStart");
 				value = searchElem.val();
 			}
 
-			const result = await super._render(force, options);
+		}
 
+		const result = await super._render(force, options);
+
+		if (this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
 			if (options.preserveSearch) {
 				const searchElem = this.element.find('input[type="search"]');
 				searchElem.trigger("focus");
@@ -125,27 +160,68 @@ export default function registerFilePicker() {
 				searchElem.val(value);
 			}
 
-			return result;
+			const tags = GameSettings.getUniquePackTags();
+
+			if (tags.length) {
+
+				const tagsParent = $(`<div class="form-group favorites"><label><span>Tags</span></label><div class="form-fields paths tags"></div></div>`);
+
+				tags.forEach(tag => {
+
+					const tagElem = $(`<span class="path tag"><a class="link">${tag}</a></span>`);
+
+					const fp = this;
+					const aElem = tagElem.find("a");
+
+					tagElem.attr("class", "path tag " + this.getTagClass(tag));
+					aElem.on("click", function () {
+						fp.toggleTag(tag);
+						fp.render(true);
+					})
+					tagsParent.find(".form-fields").append(tagElem);
+				});
+
+				tagsParent.insertAfter(this.element.find("div.filter-dir"));
+
+				this.position.height = null;
+				this.element.css({ height: "" });
+
+			}
+
 		}
 
-		_onSearchFilter(event, query, rgx, html) {
-			if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
-				this.deepSearch = "";
-				return super._onSearchFilter(event, query, rgx, html);
-			}
-			if (query !== this.deepSearch) {
-				this.deepSearch = query;
-				this.render(true, { preserveSearch: true });
-			}
+		return result;
+	}
+
+	toggleTag(tag) {
+		if (this.tags[tag] === undefined) {
+			this.tags[tag] = true;
+		} else if (this.tags[tag]) {
+			this.tags[tag] = false;
+		} else {
+			delete this.tags[tag];
 		}
 	}
 
+	getTagClass(tag) {
+		if (this.tags[tag] === undefined) return "";
+		if (this.tags[tag]) return "ats-tag-selected";
+		return "ats-tag-deselected";
+	}
 
-	FilePicker = KinemancerFilePicker;
-
+	_onSearchFilter(event, query, rgx, html) {
+		if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
+			this.deepSearch = "";
+			return super._onSearchFilter(event, query, rgx, html);
+		}
+		if (this.deepSearch !== query) {
+			this.deepSearch = query;
+			this.render(true, { preserveSearch: true });
+		}
+	}
 }
 
-export function filePickerHandler(filePicker, html) {
+function filePickerHandler(filePicker, html) {
 
 	html.find('ol:not(.details-list) li img').each((idx, imgElem) => {
 

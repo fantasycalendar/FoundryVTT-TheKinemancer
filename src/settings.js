@@ -4,22 +4,28 @@ import CONSTANTS from "./constants.js";
 class Settings extends TJSGameSettings {
 
 	SETTINGS = {
-		INSTALLED_PACKS: 'installed-packs',
+		PACK_TAGS: 'pack-tags',
 	}
 
 	constructor() {
 		super(CONSTANTS.MODULE_NAME);
 	}
 
+	getUniquePackTags() {
+		return Array.from(new Set(Object.values(this.PACK_TAGS.get()).deepFlatten())).sort((a, b) => {
+			return b > a ? -1 : 1;
+		});
+	}
+
 	initialize() {
 		this.register({
 			namespace: CONSTANTS.MODULE_NAME,
-			key: this.SETTINGS.INSTALLED_PACKS,
+			key: this.SETTINGS.PACK_TAGS,
 			options: {
 				scope: "world",
 				config: false,
-				default: [],
-				type: Array
+				default: {},
+				type: Object
 			}
 		});
 

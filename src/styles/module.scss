@@ -1,3 +1,7 @@
+:root {
+  --the-kinemancer-color: #00c473;
+}
+
 .ats {
 
   &-divider {
@@ -174,6 +178,16 @@
 
   }
 
+}
+
+.ats-tag-selected {
+  background-color: #0e930e !important;
+  color: #f1fff1;
+}
+
+.ats-tag-deselected {
+  background-color: #c91919 !important;
+  color: #fff1f1;
 }
 
 

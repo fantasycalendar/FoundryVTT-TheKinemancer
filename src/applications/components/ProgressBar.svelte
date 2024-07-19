@@ -4,18 +4,21 @@
 
 	export let progress;
 	export let text;
+	export let backgroundColor = "var(--the-kinemancer-color)";
+	export let textColor = "inherit";
 
 	let divWidth;
 
 	$: styles = {
 		"--progress-width": `${divWidth ?? 0}px`,
-		"--progress": `${progress * 100}%`
+		"--progress": `${progress * 100}%`,
+		"color": textColor
 	}
 
 </script>
 
 <div class="progress" bind:offsetWidth={divWidth} use:applyStyles={styles}>
-	<div class="progress-bar">
+	<div class="progress-bar" style="background-color: {backgroundColor};">
 		<div class="progress-text">{text}</div>
 	</div>
 	<div class="progress-text">{text}</div>
@@ -38,22 +41,16 @@
       width: var(--progress-width);
       top: 1px;
       text-align: center;
-      color: white;
       font-weight: bold;
+      z-index: 1;
     }
 
     .progress-bar {
       height: 100%;
       overflow: hidden;
       position: relative;
-      background-color: #00c473;
       width: var(--progress);
       z-index: 2;
-
-      .progress-text {
-        color: black;
-        z-index: 1;
-      }
     }
   }
 

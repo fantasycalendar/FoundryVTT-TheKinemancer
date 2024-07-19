@@ -3,12 +3,14 @@ import JSZipUtils from "jszip-utils";
 import ProgressBar from "./ProgressBarStore.js";
 import * as lib from "./lib.js";
 import { writable } from "svelte/store";
+import GameSettings from "../settings.js";
 
 class Downloader {
 
 	startDeltaTime = 0;
 	ready = writable(false);
 	downloading = writable(false);
+	failed = writable(false);
 
 	totalSize = writable("");
 	loadedSize = writable("");
@@ -21,9 +23,11 @@ class Downloader {
 	async downloadPack(url) {
 		this.startDeltaTime = performance.now();
 		this.downloading.set(true);
-		const { dirs, files } = await this.fetchZipContents(url)
-		await this.createFiles(dirs, files);
+		this.failed.set(false);
+		const contents = await this.fetchZipContents(url)
+		await this.createFiles(contents);
 		this.downloading.set(false);
+		return contents;
 	}
 
 	async fetchZipContents(zipUrl, currentZip = 0, numZips = 1) {
@@ -83,28 +87,43 @@ class Downloader {
 					const filesToCheck = Object.values(zip.files).filter(f => !f.dir && zip.file(f.name));
 
 					const filesToCreate = [];
+					let tags = {};
 					for (const zipFile of filesToCheck) {
-						const fileData = zip.file(zipFile.name);
 						let path = zipFile.name.split("/")
 						const fileName = path.pop();
 						path = path.join("/")
-						filesToCreate.push({ path, fileName, fileData });
+						if (zipFile.name.endsWith("tags.json")) {
+							const jsonData = await zip.file(zipFile.name).async("string");
+							tags[path] = JSON.parse(jsonData);
+							continue;
+						}
+						const fileData = zip.file(zipFile.name);
+						filesToCreate.push({ path, fileName, fileData, fullPath: zipFile.name });
 					}
 
 					resolve({
-						dirs: dirsToCreate,
-						files: filesToCreate
+						dirsToCreate,
+						filesToCreate,
+						tags
 					});
 				})
 				.catch((err) => {
-					ui.notifications.error("JB2A | Error: Could not fetch zip file! Are you sure you entered the right link?");
+					ui.notifications.error("The Kinemancer | Error: Could not fetch zip file! Are you sure you entered the right link?");
 					reject(err);
 					console.log(err)
+					this.downloading.set(false);
+					this.failed.set(true);
 				})
 		})
 	}
 
-	async createFiles(dirsToCreate, filesToCreate) {
+	async createFiles({ dirsToCreate = [], filesToCreate = [], tags = [] } = {}) {
+
+		const newTags = GameSettings.PACK_TAGS.get();
+		for (const [path, name] of Object.entries(tags)) {
+			newTags[path] = name;
+		}
+		await GameSettings.PACK_TAGS.set(newTags);
 
 		if (dirsToCreate.length) {
 
