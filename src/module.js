@@ -28,7 +28,7 @@ Hooks.once('init', async function () {
 });
 
 Hooks.on("changeSidebarTab", (app) => {
-	const button = $("<button><i class='fas icon-thekinemancer_icon_logo'></i> The Kinemancer: Pack Downloader</button>");
+	const button = $("<button><i class='fas icon-thekinemancer_icon_logo'></i> The Kinemancer Downloader</button>");
 	button.on("click", () => {
 		DownloaderApp.show();
 	});

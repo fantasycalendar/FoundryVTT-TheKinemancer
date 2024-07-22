@@ -9,7 +9,7 @@ export default class DownloaderApp extends SvelteApplication {
 
 	static get defaultOptions() {
 		return foundry.utils.mergeObject(super.defaultOptions, {
-			title: "The Kinemancer: Pack Downloader",
+			title: "The Kinemancer Downloader",
 			width: 400,
 			height: "auto",
 			svelte: {

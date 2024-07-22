@@ -196,7 +196,9 @@ export function getThumbnailVariations(url) {
 
 export function getVideoJsonPath(placeableDocument) {
 	return decodeURI(placeableDocument.texture.src).split("  ")[0]
-		.replace(".webm", "") + ".json";
+			.split("_(")[0]
+			.split("__")[0]
+		+ ".json";
 }
 
 export function createJsonFile(placeableDocument, inData) {

@@ -4,7 +4,6 @@
   "description": "<p>Bring life to your VTT Games with animated assets for tiles, overlays, tokens and more!</p><p style=\"margin-bottom:0.5rem;\"><a target=\"_blank\" href=\"https://www.thekinemancer.com/\">Animated Asset Packs</a> - <a target=\"_blank\" href=\"https://www.thekinemancer.com/faq/\">FAQ</a> - <a target=\"_blank\" href=\"https://discord.gg/zhaYaj5ejg\">Discord</a></p>",
   "version": "1.0.0",
   "library": false,
-  "manifestPlusVersion": "1.2.0",
   "compatibility": {
     "minimum": 10,
     "verified": 12,

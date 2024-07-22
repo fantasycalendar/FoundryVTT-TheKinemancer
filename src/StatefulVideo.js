@@ -338,7 +338,7 @@ export class StatefulVideo {
 
 		await lib.getWildCardFiles(baseFile).then((results) => {
 
-			results = results.filter(file => file.includes("__") || (!file.includes("__") && !file.includes("_(")));
+			results = results.filter(file => !file.includes("_thumb") && (file.includes("__") || (!file.includes("__") && !file.includes("_("))));
 
 			if (results.length <= 1) return;
 
@@ -368,9 +368,11 @@ export class StatefulVideo {
 					selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
 					selectColorButton.trigger("pointerdown");
 					await placeableDocument.update({
-						img: filePath
+						"texture.src": filePath
 					});
-					const hud = placeable instanceof Token ? canvas.tokens.hud : canvas.tokens.tiles;
+					const hud = placeable instanceof Token
+						? canvas.tokens.hud
+						: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -1040,8 +1042,13 @@ class Flags {
 	determineFile(stateIndex) {
 
 		const state = this.states[stateIndex];
-		if (!this.useFiles || !state.file || !this.folderPath) return this.baseFile;
-		return this.folderPath + "/" + state.file;
+		if (this.useFiles && state.file && this.folderPath) {
+			return this.folderPath + "/" + state.file;
+		}
+		if (this.currentFile.includes("__")) {
+			return this.currentFile;
+		}
+		return this.baseFile;
 
 	}
 
