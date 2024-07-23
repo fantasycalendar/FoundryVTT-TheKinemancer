@@ -15,10 +15,22 @@ class KinemancerFilePicker extends FilePicker {
 
 	filesWithColorVariants = {};
 	filesWithWebmThumbnails = {};
-	tags = {};
 	deepSearch = "";
+	filtersActive = false;
+	tags = {};
+	filters = {};
 
-	async searchDir(dir, data, validPacks) {
+	dirMatchesFilter(dir) {
+		return Object.entries(this.filters).every(([settingsKey, filters]) => {
+			const setting = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
+			return setting[dir] && Object.entries(filters).every(([tag, value]) => {
+				const found = setting[dir].includes(tag);
+				return found === value;
+			});
+		})
+	}
+
+	async searchDir(dir, data) {
 
 		const results = await FilePicker.browse("data", `${dir}/*`, { wildcard: true });
 
@@ -36,7 +48,9 @@ class KinemancerFilePicker extends FilePicker {
 			dir.pop();
 			dir = dir.join("/")
 
-			if (validPacks && !validPacks.has(dir)) continue;
+			if (this.filtersActive) {
+				if (!this.dirMatchesFilter(dir)) continue;
+			}
 
 			// Find the color variants
 			const colorVariants = results.files.filter(variantFile => {
@@ -48,12 +62,19 @@ class KinemancerFilePicker extends FilePicker {
 			if (this.deepSearch) {
 				const parts = file.split("/");
 				const fileName = parts.pop().split(".")[0].toLowerCase();
+				const basePath = parts.join("/")
+
 				const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
+				const additionalValidSearchParts = this.filters[basePath]?.length
+					? this.filters[basePath].map(str => str.toLowerCase())
+					: [];
+
 				if (!searchParts.every(part => {
 					if (part.startsWith("color:")) {
-						return colorVariants.some(color => color.colorName.includes(part.split(":")[1]))
+						const colorToFind = part.split(":")[1];
+						return colorVariants.some(color => color.colorName.includes(colorToFind))
 					}
-					return fileName.includes(part)
+					return fileName.includes(part) || additionalValidSearchParts.includes(part)
 				})) continue;
 			}
 
@@ -77,9 +98,9 @@ class KinemancerFilePicker extends FilePicker {
 
 		}
 
-		if (this.deepSearch || validPacks) {
+		if (this.deepSearch || this.filtersActive) {
 			for (const subDir of results.dirs) {
-				await this.searchDir(subDir, data, validPacks);
+				await this.searchDir(subDir, data);
 			}
 		}
 
@@ -94,33 +115,21 @@ class KinemancerFilePicker extends FilePicker {
 
 		const data = await super.getData(options);
 
+		this.filtersActive = false;
+
 		if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
 
-		const validPacks = foundry.utils.isEmpty(this.tags) ? false : new Set();
-		const blackListed = new Set();
-		if (validPacks) {
-			const packTags = Object.entries(GameSettings.PACK_TAGS.get());
-			Object.entries(this.tags).forEach(([tag, filter]) => {
-				for (const [dir, tags] of packTags) {
-					if (filter) {
-						const packHasTag = tags.some(packTag => packTag === tag);
-						if (!packHasTag) continue;
-						if (!blackListed.has(dir)) validPacks.add(dir);
-					} else {
-						blackListed.add(dir);
-						validPacks.delete(dir);
-					}
-				}
-			})
-		}
+		this.tags = GameSettings.TAGS.get();
 
-		if (this.deepSearch || validPacks) {
+		this.filtersActive = !foundry.utils.isEmpty(this.filters);
+
+		if (this.deepSearch || this.filtersActive) {
 			data.files = [];
 		}
 
 		for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
 
-			const foundMatches = await this.searchDir(dir.path, data, validPacks);
+			const foundMatches = await this.searchDir(dir.path, data);
 
 			if (foundMatches) {
 				data.dirs.splice(index, 1);
@@ -128,7 +137,7 @@ class KinemancerFilePicker extends FilePicker {
 
 		}
 
-		if (this.deepSearch || validPacks) {
+		if (this.deepSearch || this.filtersActive) {
 			data.dirs = [];
 		}
 
@@ -160,52 +169,62 @@ class KinemancerFilePicker extends FilePicker {
 				searchElem.val(value);
 			}
 
-			const tags = GameSettings.getUniquePackTags();
+			this.addTagRegion("Asset Types", GameSettings.SETTINGS.ASSET_TYPES);
+			this.addTagRegion("Time Periods", GameSettings.SETTINGS.TIME_PERIODS);
+			this.addTagRegion("Categories", GameSettings.SETTINGS.CATEGORIES);
 
-			if (tags.length) {
-
-				const tagsParent = $(`<div class="form-group favorites"><label><span>Tags</span></label><div class="form-fields paths tags"></div></div>`);
-
-				tags.forEach(tag => {
-
-					const tagElem = $(`<span class="path tag"><a class="link">${tag}</a></span>`);
-
-					const fp = this;
-					const aElem = tagElem.find("a");
-
-					tagElem.attr("class", "path tag " + this.getTagClass(tag));
-					aElem.on("click", function () {
-						fp.toggleTag(tag);
-						fp.render(true);
-					})
-					tagsParent.find(".form-fields").append(tagElem);
-				});
-
-				tagsParent.insertAfter(this.element.find("div.filter-dir"));
-
-				this.position.height = null;
-				this.element.css({ height: "" });
-
-			}
+			this.position.height = null;
+			this.element.css({ height: "" });
 
 		}
 
 		return result;
 	}
 
-	toggleTag(tag) {
-		if (this.tags[tag] === undefined) {
-			this.tags[tag] = true;
-		} else if (this.tags[tag]) {
-			this.tags[tag] = false;
+	addTagRegion(title, setting_key) {
+
+		const tags = GameSettings.getUniqueTags(setting_key);
+
+		if (!tags.length) return;
+
+		const tagsParent = $(`<div class="form-group favorites"><label><span>${title}</span></label><div class="form-fields paths tags"></div></div>`);
+
+		tags.forEach(tag => {
+
+			const tagElem = $(`<span class="path tag"><a class="link">${tag}</a></span>`);
+
+			const fp = this;
+			const aElem = tagElem.find("a");
+
+			tagElem.attr("class", "path tag " + this.getTagClass(setting_key, tag));
+			aElem.on("click", function () {
+				fp.toggleFilter(setting_key, tag);
+				fp.render(true);
+			})
+			tagsParent.find(".form-fields").append(tagElem);
+		});
+
+		tagsParent.insertBefore(this.element.find("div.form-fields.display-modes").parent());
+
+	}
+
+	toggleFilter(filterKey, tag) {
+		if (this.filters[filterKey]?.[tag] === undefined) {
+			if (!this.filters[filterKey]) this.filters[filterKey] = {}
+			this.filters[filterKey][tag] = true;
+		} else if (this.filters[filterKey]?.[tag]) {
+			this.filters[filterKey][tag] = false;
 		} else {
-			delete this.tags[tag];
+			delete this.filters[filterKey][tag];
+			if (foundry.utils.isEmpty(this.filters[filterKey])) {
+				delete this.filters[filterKey];
+			}
 		}
 	}
 
-	getTagClass(tag) {
-		if (this.tags[tag] === undefined) return "";
-		if (this.tags[tag]) return "ats-tag-selected";
+	getTagClass(filterKey, tag) {
+		if (this.filters[filterKey]?.[tag] === undefined) return "";
+		if (this.filters[filterKey]?.[tag]) return "ats-tag-selected";
 		return "ats-tag-deselected";
 	}
 

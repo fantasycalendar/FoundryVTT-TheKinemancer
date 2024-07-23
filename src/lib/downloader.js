@@ -4,6 +4,7 @@ import ProgressBar from "./ProgressBarStore.js";
 import * as lib from "./lib.js";
 import { writable } from "svelte/store";
 import GameSettings from "../settings.js";
+import CONSTANTS from "../constants.js";
 
 class Downloader {
 
@@ -87,15 +88,31 @@ class Downloader {
 					const filesToCheck = Object.values(zip.files).filter(f => !f.dir && zip.file(f.name));
 
 					const filesToCreate = [];
-					let tags = {};
+					let tags = {
+						[GameSettings.SETTINGS.ASSET_TYPES]: {},
+						[GameSettings.SETTINGS.TIME_PERIODS]: {},
+						[GameSettings.SETTINGS.CATEGORIES]: {},
+						[GameSettings.SETTINGS.TAGS]: {}
+					};
 					for (const zipFile of filesToCheck) {
 						let path = zipFile.name.split("/")
 						const fileName = path.pop();
 						path = path.join("/")
-						if (zipFile.name.endsWith("tags.json")) {
-							const jsonData = await zip.file(zipFile.name).async("string");
-							tags[path] = JSON.parse(jsonData);
-							continue;
+						if (zipFile.name.endsWith(".json")) {
+							const jsonString = await zip.file(zipFile.name).async("string");
+							const jsonData = JSON.parse(jsonString);
+							if (foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.ASSET_TYPES][path] = foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG);
+							}
+							if (foundry.utils.getProperty(jsonData, CONSTANTS.TIME_PERIODS_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.TIME_PERIODS][path] = foundry.utils.getProperty(jsonData, CONSTANTS.TIME_PERIODS_FLAG);
+							}
+							if (foundry.utils.getProperty(jsonData, CONSTANTS.CATEGORIES_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.CATEGORIES][path] = foundry.utils.getProperty(jsonData, CONSTANTS.CATEGORIES_FLAG);
+							}
+							if (foundry.utils.getProperty(jsonData, CONSTANTS.TAGS_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.TAGS][path] = foundry.utils.getProperty(jsonData, CONSTANTS.TAGS_FLAG);
+							}
 						}
 						const fileData = zip.file(zipFile.name);
 						filesToCreate.push({ path, fileName, fileData, fullPath: zipFile.name });
@@ -117,13 +134,11 @@ class Downloader {
 		})
 	}
 
-	async createFiles({ dirsToCreate = [], filesToCreate = [], tags = [] } = {}) {
+	async createFiles({ dirsToCreate = [], filesToCreate = [], tags = {} } = {}) {
 
-		const newTags = GameSettings.PACK_TAGS.get();
-		for (const [path, name] of Object.entries(tags)) {
-			newTags[path] = name;
+		for (const [settingsKey, values] of Object.entries(tags)) {
+			await lib.updateFilters(settingsKey, values);
 		}
-		await GameSettings.PACK_TAGS.set(newTags);
 
 		if (dirsToCreate.length) {
 

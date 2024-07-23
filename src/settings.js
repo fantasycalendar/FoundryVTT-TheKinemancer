@@ -4,23 +4,64 @@ import CONSTANTS from "./constants.js";
 class Settings extends TJSGameSettings {
 
 	SETTINGS = {
-		PACK_TAGS: 'pack-tags',
+		ASSET_TYPES: CONSTANTS.FLAG_KEYS.ASSET_TYPES,
+		TIME_PERIODS: CONSTANTS.FLAG_KEYS.TIME_PERIODS,
+		CATEGORIES: CONSTANTS.FLAG_KEYS.CATEGORIES,
+		TAGS: CONSTANTS.FLAG_KEYS.TAGS,
 	}
 
 	constructor() {
 		super(CONSTANTS.MODULE_NAME);
 	}
 
-	getUniquePackTags() {
-		return Array.from(new Set(Object.values(this.PACK_TAGS.get()).deepFlatten())).sort((a, b) => {
+	getUniqueTags(settingsKey) {
+		const values = new Set(
+			Object.values(game.settings.get(CONSTANTS.MODULE_NAME, settingsKey)).deepFlatten()
+		);
+
+		return Array.from(values).sort((a, b) => {
 			return b > a ? -1 : 1;
 		});
 	}
 
 	initialize() {
+
 		this.register({
 			namespace: CONSTANTS.MODULE_NAME,
-			key: this.SETTINGS.PACK_TAGS,
+			key: this.SETTINGS.ASSET_TYPES,
+			options: {
+				scope: "world",
+				config: false,
+				default: {},
+				type: Object
+			}
+		});
+
+		this.register({
+			namespace: CONSTANTS.MODULE_NAME,
+			key: this.SETTINGS.TIME_PERIODS,
+			options: {
+				scope: "world",
+				config: false,
+				default: {},
+				type: Object
+			}
+		});
+
+		this.register({
+			namespace: CONSTANTS.MODULE_NAME,
+			key: this.SETTINGS.CATEGORIES,
+			options: {
+				scope: "world",
+				config: false,
+				default: {},
+				type: Object
+			}
+		});
+
+		this.register({
+			namespace: CONSTANTS.MODULE_NAME,
+			key: this.SETTINGS.TAGS,
 			options: {
 				scope: "world",
 				config: false,

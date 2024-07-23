@@ -194,11 +194,18 @@ export function getThumbnailVariations(url) {
 	return Object.keys(CONST.IMAGE_FILE_EXTENSIONS).map(ext => url.replace(".webm", "." + ext));
 }
 
-export function getVideoJsonPath(placeableDocument) {
-	return decodeURI(placeableDocument.texture.src).split("  ")[0]
+export function getCleanWebmPath(placeableDocument) {
+	return decodeURI(placeableDocument.texture.src)
+			.split("  ")[0]
 			.split("_(")[0]
 			.split("__")[0]
-		+ ".json";
+		+ ".webm";
+}
+
+export function getVideoJsonPath(placeableDocument) {
+	return getCleanWebmPath(placeableDocument)
+			.replace(".webm", "")
+		+ ".json"
 }
 
 export function createJsonFile(placeableDocument, inData) {
@@ -208,6 +215,14 @@ export function createJsonFile(placeableDocument, inData) {
 	const blob = new Blob([serializedData], { type: 'application/json' });
 	const file = new File([blob], splitPath.pop());
 	return FilePicker.upload("data", splitPath.join('/'), file, {}, { notify: false });
+}
+
+export function updateFilters(settingsKey, values) {
+	const newTags = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
+	for (const [path, tags] of Object.entries(values)) {
+		newTags[path] = tags;
+	}
+	return game.settings.set(CONSTANTS.MODULE_NAME, settingsKey, newTags);
 }
 
 
