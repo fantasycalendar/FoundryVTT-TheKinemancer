@@ -195,17 +195,16 @@ export function getThumbnailVariations(url) {
 }
 
 export function getCleanWebmPath(placeableDocument) {
-	return decodeURI(placeableDocument.texture.src)
-			.split("  ")[0]
-			.split("_(")[0]
-			.split("__")[0]
-		+ ".webm";
+	let path = decodeURI(placeableDocument.texture.src)
+		.split("  ")[0]
+		.split("_(")[0]
+		.split("__")[0];
+	if (!path.toLowerCase().endsWith(".webm")) path += ".webm";
+	return path;
 }
 
 export function getVideoJsonPath(placeableDocument) {
-	return getCleanWebmPath(placeableDocument)
-			.replace(".webm", "")
-		+ ".json"
+	return getCleanWebmPath(placeableDocument).replace(".webm", "") + ".json";
 }
 
 export function createJsonFile(placeableDocument, inData) {

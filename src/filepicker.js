@@ -65,8 +65,8 @@ class KinemancerFilePicker extends FilePicker {
 				const basePath = parts.join("/")
 
 				const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
-				const additionalValidSearchParts = this.filters[basePath]?.length
-					? this.filters[basePath].map(str => str.toLowerCase())
+				const additionalValidSearchParts = this.tags[basePath]?.length
+					? this.tags[basePath].map(str => str.toLowerCase())
 					: [];
 
 				if (!searchParts.every(part => {
@@ -112,10 +112,10 @@ class KinemancerFilePicker extends FilePicker {
 
 		this.filesWithColorVariants = {};
 		this.filesWithWebmThumbnails = {};
+		this.filtersActive = false;
+		this.tags = {};
 
 		const data = await super.getData(options);
-
-		this.filtersActive = false;
 
 		if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
 
