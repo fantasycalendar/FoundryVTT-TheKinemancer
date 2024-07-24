@@ -56,6 +56,11 @@
       color: white;
       pointer-events: all;
 
+      .ats-hud-icon-container {
+        display: grid;
+        grid-template-columns: repeat(6, auto);
+      }
+
       > select {
         font-size: var(--font-size-28);
         color: rgb(218, 218, 218);

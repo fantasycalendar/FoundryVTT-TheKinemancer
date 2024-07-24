@@ -15,8 +15,10 @@ class Settings extends TJSGameSettings {
 	}
 
 	getUniqueTags(settingsKey) {
+		const setting = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
+
 		const values = new Set(
-			Object.values(game.settings.get(CONSTANTS.MODULE_NAME, settingsKey)).deepFlatten()
+			Object.values(setting).deepFlatten().filter(Boolean)
 		);
 
 		return Array.from(values).sort((a, b) => {

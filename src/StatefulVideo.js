@@ -294,13 +294,16 @@ export class StatefulVideo {
 
 		if (statefulVideo) {
 
+			const iconContainer = $("<div class='ats-hud-icon-container'></div>");
+			selectContainer.append(iconContainer);
+
 			for (const [index, state] of statefulVideo.flags.states.entries()) {
 				if (!state.icon) continue;
 				const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
 				stateBtn.on("pointerdown", () => {
 					statefulVideo.changeState({ state: index, fast: true });
 				});
-				selectContainer.append(stateBtn);
+				iconContainer.append(stateBtn);
 			}
 
 			if (statefulVideo.flags.states.length) {

@@ -37,6 +37,7 @@ class KinemancerFilePicker extends FilePicker {
 		// Gather the main files in the pack
 		const packFiles = results.files.filter(file => {
 			return !file.includes("__")
+				&& !file.includes("_(")
 				&& !file.includes("_thumb")
 				&& file.toLowerCase().endsWith(".webm")
 		});
