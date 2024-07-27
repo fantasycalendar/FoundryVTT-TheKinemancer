@@ -100,7 +100,12 @@ class Downloader {
 						path = path.join("/")
 						if (zipFile.name.endsWith(".json")) {
 							const jsonString = await zip.file(zipFile.name).async("string");
-							const jsonData = JSON.parse(jsonString);
+							let jsonData = false;
+							try {
+								jsonData = JSON.parse(jsonString);
+							} catch (err) {
+								throw new Error(`Could not load JSON file for this pack! Please contact The Kinemancer for support | ${err}`)
+							}
 							if (foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
 								tags[GameSettings.SETTINGS.ASSET_TYPES][path] = foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG);
 							}
@@ -125,7 +130,7 @@ class Downloader {
 					});
 				})
 				.catch((err) => {
-					ui.notifications.error("The Kinemancer | Error: Could not fetch zip file! Are you sure you entered the right link?");
+					ui.notifications.error(`The Kinemancer | ${err}`);
 					reject(err);
 					console.log(err)
 					this.downloading.set(false);

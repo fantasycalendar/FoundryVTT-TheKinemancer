@@ -81,6 +81,12 @@ export function randomIntegerBetween(min, max) {
 }
 
 
+export function randomArrayElement(arr) {
+	const randomIndex = randomIntegerBetween(0, arr.length);
+	return arr[randomIndex];
+}
+
+
 export function transformNumber(num) {
 	// Flip the input number
 	const flippedNum = 1 - num;
@@ -90,6 +96,10 @@ export function transformNumber(num) {
 
 	// Flip the output number
 	return 1 - transformedNum;
+}
+
+export function uniqueArrayElements(arr) {
+	return Array.from(new Set(arr));
 }
 
 
@@ -188,7 +198,7 @@ export function validateStates(states) {
 
 export function determineFileColor(inFile) {
 
-	const lowerCaseFile = decodeURI(inFile.toLowerCase());
+	const lowerCaseFile = decodeURIComponent(inFile.toLowerCase());
 
 	for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
 		if (lowerCaseFile.endsWith(`__${colorName}.webm`)) {
@@ -211,7 +221,7 @@ export function getThumbnailVariations(url) {
 
 
 export function getCleanWebmPath(placeableDocument) {
-	let path = decodeURI(placeableDocument.texture.src)
+	let path = decodeURIComponent(placeableDocument.texture.src)
 		.split("  ")[0]
 		.split("_(")[0]
 		.split("__")[0];

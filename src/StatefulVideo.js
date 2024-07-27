@@ -130,20 +130,6 @@ export class StatefulVideo {
 			StatefulVideo.onUpdate(placeableDoc, data);
 		});
 
-		Hooks.on("createTile", (placeableDoc) => {
-			if (!lib.isResponsibleGM()) return;
-			const path = lib.getVideoJsonPath(placeableDoc);
-			fetch(path)
-				.then(response => response.json())
-				.then((result) => {
-					setTimeout(() => {
-						placeableDoc.update(result);
-					}, 500);
-				})
-				.catch(err => {
-				});
-		});
-
 		Hooks.on("preUpdateToken", (placeableDoc, data) => {
 			StatefulVideo.onPreUpdate(placeableDoc, data);
 		});
@@ -158,6 +144,12 @@ export class StatefulVideo {
 			fetch(path)
 				.then(response => response.json())
 				.then((result) => {
+					const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+					result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+					const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+					if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+						result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+					}
 					placeableDoc.update(result);
 				})
 				.catch(err => {
@@ -259,7 +251,7 @@ export class StatefulVideo {
 	}
 
 	get duration() {
-		return (this.video.duration * 1000) - this.flags.singleFrameDuration;
+		return Math.max(0, (this.video.duration * 1000) - this.flags.singleFrameDuration);
 	}
 
 	static tearDown(uuid) {
@@ -332,7 +324,7 @@ export class StatefulVideo {
     </div>`);
 
 
-		let baseFile = decodeURI(placeableDocument.texture.src).split("_(")[0].split("__")[0];
+		let baseFile = decodeURIComponent(placeableDocument.texture.src).split("_(")[0].split("__")[0];
 		if (baseFile.endsWith(".webm")) {
 			baseFile = baseFile.replace(".webm", "*.webm")
 		} else {
@@ -341,7 +333,9 @@ export class StatefulVideo {
 
 		await lib.getWildCardFiles(baseFile).then((results) => {
 
-			results = results.filter(file => !file.includes("_thumb") && (file.includes("__") || (!file.includes("__") && !file.includes("_("))));
+			results = results.filter(file => {
+				return !file.includes("_thumb") && file.includes("__") && !file.includes("_(");
+			});
 
 			if (results.length <= 1) return;
 
@@ -463,11 +457,14 @@ export class StatefulVideo {
 			game.video.play(statefulVideo.video);
 			statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
 			return placeableDoc.update({
+				[CONSTANTS.CURRENT_STATE_FLAG]: statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE
+					? statefulVideo.flags.data.queuedState
+					: statefulVideo.flags.data.currentStateIndex,
 				[CONSTANTS.QUEUED_STATE_FLAG]: statefulVideo.flags.data.queuedState
 			});
 		}
 		statefulVideo.updateSelect();
-		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
+		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate || statefulVideo.flags.previousState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE) {
 			statefulVideo.setupRandomTimers();
 			if (statefulVideo.nextButton) {
 				statefulVideo.nextButton.removeClass("active");
@@ -481,41 +478,12 @@ export class StatefulVideo {
 		}
 	}
 
-	static async changeVideoState(uuid, { state = null, step = 1, queue = false } = {}) {
-		const placeableDoc = fromUuidSync(uuid);
-		if (!placeableDoc) return false;
-		const flags = new Flags(placeableDoc);
-		flags.updateData();
-		if (!flags.states.length) {
-			return false;
-		}
-		if (state !== null && !queue) {
-			if (!lib.isRealNumber(state)) {
-				return false;
-			}
-			return placeableDoc.update({
-				[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
-				[CONSTANTS.PREVIOUS_STATE_FLAG]: flags.currentStateIndex,
-				[CONSTANTS.CURRENT_STATE_FLAG]: state,
-				[CONSTANTS.QUEUED_STATE_FLAG]: flags.determineNextStateIndex()
-			});
-		}
-		if (!lib.isRealNumber(step)) {
-			return false;
-		}
-		if (queue && !lib.isRealNumber(state)) {
-			return false;
-		}
-		return placeableDoc.update({
-			[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
-			[CONSTANTS.QUEUED_STATE_FLAG]: queue ? state : flags.getStateIndexFromSteps(step)
-		});
-	}
-
 	static isDataValid(flags, data) {
-		return (data?.[CONSTANTS.PREVIOUS_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]))
-			|| (data?.[CONSTANTS.CURRENT_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]))
-			|| (data?.[CONSTANTS.QUEUED_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]))
+		const previousStateFlagDifferent = (data?.[CONSTANTS.PREVIOUS_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]));
+		const currentStateFlagDifferent = (data?.[CONSTANTS.CURRENT_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]));
+		const queuedStateFlagDifferent = (data?.[CONSTANTS.QUEUED_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]));
+		const previousFlagIsRandomState = flags.data.states[(data?.[CONSTANTS.PREVIOUS_STATE_FLAG] ?? flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE])]?.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE;
+		return previousStateFlagDifferent || currentStateFlagDifferent || queuedStateFlagDifferent || previousFlagIsRandomState;
 	}
 
 	async update(data) {
@@ -523,7 +491,7 @@ export class StatefulVideo {
 
 		if (!StatefulVideo.isDataValid(this.flags, data)) return;
 
-		data[CONSTANTS.UPDATED_FLAG] = Number(Date.now());
+		data[CONSTANTS.UPDATED_FLAG] = data[CONSTANTS.UPDATED_FLAG] ?? Number(Date.now());
 
 		if (game.user.isGM) {
 			return this.document.update(data);
@@ -556,8 +524,14 @@ export class StatefulVideo {
 	}
 
 	async updateState(stateIndex) {
+		let previousStateIndex = this.flags.currentStateIndex;
+		if (this.flags.states[stateIndex].behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE) {
+			previousStateIndex = stateIndex;
+			stateIndex = this.flags.determineNextStateIndex(stateIndex);
+		}
 		const updates = {
-			[CONSTANTS.PREVIOUS_STATE_FLAG]: this.flags.currentStateIndex,
+			[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
+			[CONSTANTS.PREVIOUS_STATE_FLAG]: previousStateIndex,
 			[CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
 			[CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex),
 			"texture.src": this.flags.determineFile(stateIndex)
@@ -781,6 +755,12 @@ export class StatefulVideo {
 		const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
 		const offsetStartTime = (startTime + offsetLoopTime);
 
+		if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent) {
+			return {
+				playing: true, loop: true, offset: offsetStartTime / 1000
+			};
+		}
+
 		this.offset = 0;
 
 		this.setTimeout(() => {
@@ -998,7 +978,8 @@ class Flags {
 
 		const nextStates = this.states.filter(s => {
 			return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
-		}).map(s => this.states.indexOf(s))
+		}).map(s => this.states.indexOf(s));
+
 		if (nextStates.length) {
 			return nextStates;
 		}
@@ -1036,6 +1017,10 @@ class Flags {
 			case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
 				const nextIndex = this.getStateById(state.nextState);
 				return nextIndex >= 0 ? nextIndex : defaultIndex;
+
+			case CONSTANTS.BEHAVIORS.RANDOM_STATE:
+				const nextStates = state.randomState.map(id => this.states.findIndex(s => s.id === id)).filter(i => i > -1);
+				return nextStates.length ? lib.randomArrayElement(nextStates) : defaultIndex;
 		}
 
 		return index;

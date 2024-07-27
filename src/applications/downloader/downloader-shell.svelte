@@ -5,6 +5,8 @@
 	import ProgressBar from "../components/ProgressBar.svelte";
 	import Downloader from "../../lib/downloader.js";
 	import { writable } from "svelte/store";
+	import { uniqueArrayElements } from "../../lib/lib.js";
+	import * as lib from "../../lib/lib.js";
 
 	export let elementRoot;
 
@@ -28,7 +30,7 @@
 			.then(async (result) => {
 				if (result) {
 					step = 3;
-					downloadedPaths.set(Array.from(new Set(result.filesToCreate.map(file => file.path))));
+					downloadedPaths.set(lib.uniqueArrayElements(result.filesToCreate.map(file => file.path)));
 				}
 			});
 	}

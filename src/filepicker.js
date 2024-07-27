@@ -1,6 +1,7 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
+import { uniqueArrayElements } from "./lib/lib.js";
 
 
 export default function registerFilePicker() {
@@ -15,6 +16,7 @@ class KinemancerFilePicker extends FilePicker {
 
 	filesWithColorVariants = {};
 	filesWithWebmThumbnails = {};
+	webmsWithJsonData = {};
 	deepSearch = "";
 	filtersActive = false;
 	tags = {};
@@ -89,7 +91,27 @@ class KinemancerFilePicker extends FilePicker {
 				return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
 			});
 
-			this.filesWithColorVariants[file] = colorVariants;
+			const jsonPath = results.files.find(json => {
+				return json.toLowerCase() === file.toLowerCase().replace(".webm", ".json");
+			});
+
+			if (jsonPath) {
+				this.webmsWithJsonData[file] = await fetch(jsonPath)
+					.then(response => response.json())
+					.then((result) => {
+						const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+						result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+						const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+						if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+							result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+						}
+						return result
+					})
+					.catch(err => {
+					});
+			}
+
+			this.filesWithColorVariants[file] = lib.uniqueArrayElements(colorVariants.map(config => config.color));
 
 			data.files.push({
 				name: file.split("/").pop(),
@@ -113,6 +135,7 @@ class KinemancerFilePicker extends FilePicker {
 
 		this.filesWithColorVariants = {};
 		this.filesWithWebmThumbnails = {};
+		this.webmsWithJsonData = {};
 		this.filtersActive = false;
 		this.tags = {};
 
@@ -128,15 +151,20 @@ class KinemancerFilePicker extends FilePicker {
 			data.files = [];
 		}
 
+		const indicesToRemove = [];
+
 		for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
 
 			const foundMatches = await this.searchDir(dir.path, data);
 
 			if (foundMatches) {
-				data.dirs.splice(index, 1);
+				indicesToRemove.push(index);
 			}
 
 		}
+
+		indicesToRemove.reverse()
+		for (const i of indicesToRemove) data.dirs.splice(i, 1);
 
 		if (this.deepSearch || this.filtersActive) {
 			data.dirs = [];
@@ -239,6 +267,17 @@ class KinemancerFilePicker extends FilePicker {
 			this.render(true, { preserveSearch: true });
 		}
 	}
+
+	_onDragStart(event) {
+		super._onDragStart(event);
+		if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) return;
+		const li = event.currentTarget;
+		const jsonData = this.webmsWithJsonData[li.dataset.path];
+		if (!jsonData) return;
+		const eventBaseData = JSON.parse(event.dataTransfer.getData("text/plain"));
+		const newData = foundry.utils.mergeObject(eventBaseData, jsonData);
+		event.dataTransfer.setData("text/plain", JSON.stringify(newData));
+	}
 }
 
 function filePickerHandler(filePicker, html) {
@@ -263,13 +302,13 @@ function filePickerHandler(filePicker, html) {
 		parent.addClass('video-parent');
 
 		const allColors = (filePicker.filesWithColorVariants[path] ?? []);
-		const icons = allColors.filter(config => config.color.includes("url"));
-		const colors = allColors.filter(config => !config.color.includes("url"));
-		for (const [index, config] of icons.entries()) {
-			parent.append($(`<div class="ats-color-circle" style="${config.color} right: ${(index * 8) + 3}px; top: 3px;"></div>`))
+		const icons = allColors.filter(color => color.includes("url"));
+		const colors = allColors.filter(color => !color.includes("url"));
+		for (const [index, color] of icons.entries()) {
+			parent.append($(`<div class="ats-color-circle" style="${color} right: ${(index * 5) + 3}px; top: 3px;"></div>`))
 		}
-		for (const [index, config] of colors.entries()) {
-			parent.append($(`<div class="ats-color-circle" style="${config.color} right: ${(index * 8) + 3}px;"></div>`))
+		for (const [index, color] of colors.entries()) {
+			parent.append($(`<div class="ats-color-circle" style="${color} right: ${(index * 5) + 3}px;"></div>`))
 		}
 
 		const webmPath = filePicker.filesWithWebmThumbnails[path] || path;

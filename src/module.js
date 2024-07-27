@@ -18,7 +18,6 @@ Hooks.once('init', async function () {
 	StatefulVideo.registerHooks();
 
 	game.thekinemancer = {
-		updateState: (uuid, options) => StatefulVideo.changeVideoState(uuid, options),
 		StatefulVideo,
 		CONSTANTS,
 		copiedData,

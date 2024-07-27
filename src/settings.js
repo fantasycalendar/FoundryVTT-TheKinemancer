@@ -1,5 +1,7 @@
 import { TJSGameSettings } from "#runtime/svelte/store/fvtt/settings";
 import CONSTANTS from "./constants.js";
+import { uniqueArrayElements } from "./lib/lib.js";
+import * as lib from "./lib/lib.js";
 
 class Settings extends TJSGameSettings {
 
@@ -17,11 +19,11 @@ class Settings extends TJSGameSettings {
 	getUniqueTags(settingsKey) {
 		const setting = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
 
-		const values = new Set(
+		const values = lib.uniqueArrayElements(
 			Object.values(setting).deepFlatten().filter(Boolean)
 		);
 
-		return Array.from(values).sort((a, b) => {
+		return values.sort((a, b) => {
 			return b > a ? -1 : 1;
 		});
 	}
