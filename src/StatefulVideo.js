@@ -1039,8 +1039,17 @@ class Flags {
 	determineFile(stateIndex) {
 
 		const state = this.states[stateIndex];
-		if (this.useFiles && state.file && this.folderPath) {
-			return this.folderPath + "/" + state.file;
+		if (this.useFiles && this.folderPath) {
+			let filePath = state.file
+				? this.folderPath + "/" + state.file
+				: this.baseFile;
+
+			if (this.currentFile.includes("__")) {
+				const colorVariation = this.currentFile.split("__")[1].split(".")[0];
+				filePath = filePath.replace(".webm", `__${colorVariation}.webm`)
+			}
+
+			return filePath;
 		}
 		if (this.currentFile.includes("__")) {
 			return this.currentFile;
