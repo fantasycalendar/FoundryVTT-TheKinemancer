@@ -324,18 +324,27 @@ export class StatefulVideo {
     </div>`);
 
 
-		let baseFile = decodeURIComponent(placeableDocument.texture.src).split("_(")[0].split("__")[0];
-		if (baseFile.endsWith(".webm")) {
-			baseFile = baseFile.replace(".webm", "*.webm")
-		} else {
-			baseFile += "*.webm";
-		}
+		const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
+			.replace(".webm", "*.webm")
 
-		await lib.getWildCardFiles(baseFile).then((results) => {
+		const baseVariation = placeableDocument.texture.src.includes("_(")
+			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
+			: false;
 
-			results = results.filter(file => {
-				return !file.includes("_thumb") && file.includes("__") && !file.includes("_(");
-			});
+		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
+
+			results = Object.values(results.filter(file => {
+				return !file.includes("_thumb") && (!baseVariation || (file.includes(`_(${baseVariation})`)));
+			}).reduce((acc, filePath) => {
+				const colorConfig = lib.determineFileColor(filePath);
+				if (!acc[colorConfig.colorName]) {
+					acc[colorConfig.colorName] = {
+						...colorConfig,
+						filePath
+					};
+				}
+				return acc;
+			}, {}));
 
 			if (results.length <= 1) return;
 
@@ -353,8 +362,8 @@ export class StatefulVideo {
 
 			const width = Math.min(204, results.length * 34);
 			selectColorContainer.css({ left: width * -0.37, width: width });
-			for (const filePath of results) {
-				const { colorName, color, tooltip } = lib.determineFileColor(filePath);
+			for (const colorConfig of results) {
+				const { colorName, color, tooltip, filePath } = colorConfig;
 				const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
 				if (!colorName) {
 					selectColorContainer.prepend(button);
@@ -723,7 +732,7 @@ export class StatefulVideo {
 		}, Math.ceil(waitDuration));
 	}
 
-	handleStillBehavior(startTime) {
+	async handleStillBehavior(startTime) {
 
 		this.setupRandomTimers();
 
@@ -735,9 +744,9 @@ export class StatefulVideo {
 		}
 		this.video.addEventListener("seeked", fn);
 
-		this.video.play();
+		await this.video.play();
 		this.video.currentTime = (startTime ?? 0) / 1000;
-		this.video.pause();
+		this.video.pause()
 
 		return false;
 	}
