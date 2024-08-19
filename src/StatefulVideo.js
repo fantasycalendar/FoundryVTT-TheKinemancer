@@ -334,7 +334,11 @@ export class StatefulVideo {
 		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
 
 			results = Object.values(results.filter(file => {
-				return !file.includes("_thumb") && (!baseVariation || (file.includes(`_(${baseVariation})`)));
+				return !file.includes("_thumb") && (
+					(!baseVariation && !file.includes(`_(`))
+					||
+					(baseVariation && file.includes(`_(${baseVariation})`))
+				);
 			}).reduce((acc, filePath) => {
 				const colorConfig = lib.determineFileColor(filePath);
 				if (!acc[colorConfig.colorName]) {
@@ -362,6 +366,7 @@ export class StatefulVideo {
 
 			const width = Math.min(204, results.length * 34);
 			selectColorContainer.css({ left: width * -0.37, width: width });
+
 			for (const colorConfig of results) {
 				const { colorName, color, tooltip, filePath } = colorConfig;
 				const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
