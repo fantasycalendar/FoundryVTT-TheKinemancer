@@ -62,7 +62,7 @@
 
 			<div class="form-control">
 				<p style="font-size: 1rem; text-align: center; margin-bottom:0.65rem;">
-					Get the download links from <a href="https://www.thekinemancer.com/patreon-top-viewer/" target="_blank">The
+					Get the download links from <a href="https://www.thekinemancer.com/" target="_blank">The
 					Kinemancer's website</a>
 				</p>
 				<div>
