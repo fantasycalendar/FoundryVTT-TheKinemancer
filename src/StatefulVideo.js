@@ -750,6 +750,7 @@ export class StatefulVideo {
 		this.video.addEventListener("seeked", fn);
 
 		await this.video.play();
+		this.video.loop = false;
 		this.video.currentTime = (startTime ?? 0) / 1000;
 		this.video.pause()
 
