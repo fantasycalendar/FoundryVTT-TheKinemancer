@@ -94,10 +94,10 @@ export class StatefulVideo {
 		Hooks.on('updateUser', (user, data) => {
 
 			// If the user wasn't updated with delegated stateful videos, exit
-			if (!hasProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG)) return;
+			if (!foundry.utils.hasProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG)) return;
 
 			// If they were, but it was removed, exit
-			const statefulVideos = getProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG);
+			const statefulVideos = foundry.utils.getProperty(data, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG);
 			if (!statefulVideos) return;
 
 			// If the current delegator is a GM, don't do anything, they will handle updates
@@ -130,19 +130,6 @@ export class StatefulVideo {
 			StatefulVideo.onUpdate(placeableDoc, data);
 		});
 
-		Hooks.on("createTile", (placeableDoc) => {
-			const path = lib.getVideoJsonPath(placeableDoc);
-			fetch(path)
-				.then(response => response.json())
-				.then((result) => {
-					setTimeout(() => {
-						placeableDoc.update(result);
-					}, 500);
-				})
-				.catch(err => {
-				});
-		});
-
 		Hooks.on("preUpdateToken", (placeableDoc, data) => {
 			StatefulVideo.onPreUpdate(placeableDoc, data);
 		});
@@ -152,10 +139,17 @@ export class StatefulVideo {
 		});
 
 		Hooks.on("createToken", (placeableDoc) => {
+			if (!lib.isResponsibleGM()) return;
 			const path = lib.getVideoJsonPath(placeableDoc);
 			fetch(path)
 				.then(response => response.json())
 				.then((result) => {
+					const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+					result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+					const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+					if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+						result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+					}
 					placeableDoc.update(result);
 				})
 				.catch(err => {
@@ -196,7 +190,7 @@ export class StatefulVideo {
 		}, 200);
 
 		Hooks.on("refreshTile", (placeableObject) => {
-			if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableObject.isVideo || !foundry.utils.getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
 			const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
 			if (!statefulVideo) return;
 			statefulVideo.evaluateVisibility();
@@ -204,7 +198,7 @@ export class StatefulVideo {
 		});
 
 		Hooks.on("refreshToken", (placeableObject) => {
-			if (!placeableObject.isVideo || !getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableObject.isVideo || !foundry.utils.getProperty(placeableObject.document, CONSTANTS.STATES_FLAG)?.length) return;
 			const statefulVideo = StatefulVideo.make(placeableObject.document, placeableObject.texture);
 			if (!statefulVideo) return;
 			statefulVideo.evaluateVisibility();
@@ -215,7 +209,7 @@ export class StatefulVideo {
 
 	static getValidPlaceables() {
 		return [...canvas.tiles.placeables, canvas.tokens.placeables].filter(placeable => {
-			return placeable.isVideo && getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length;
+			return placeable.isVideo && foundry.utils.getProperty(placeable.document, CONSTANTS.STATES_FLAG)?.length;
 		});
 	}
 
@@ -257,7 +251,7 @@ export class StatefulVideo {
 	}
 
 	get duration() {
-		return (this.video.duration * 1000) - this.flags.singleFrameDuration;
+		return Math.max(0, (this.video.duration * 1000) - this.flags.singleFrameDuration);
 	}
 
 	static tearDown(uuid) {
@@ -292,13 +286,16 @@ export class StatefulVideo {
 
 		if (statefulVideo) {
 
+			const iconContainer = $("<div class='ats-hud-icon-container'></div>");
+			selectContainer.append(iconContainer);
+
 			for (const [index, state] of statefulVideo.flags.states.entries()) {
 				if (!state.icon) continue;
 				const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
 				stateBtn.on("pointerdown", () => {
 					statefulVideo.changeState({ state: index, fast: true });
 				});
-				selectContainer.append(stateBtn);
+				iconContainer.append(stateBtn);
 			}
 
 			if (statefulVideo.flags.states.length) {
@@ -327,16 +324,31 @@ export class StatefulVideo {
     </div>`);
 
 
-		let baseFile = decodeURI(placeableDocument.texture.src).split("_(")[0].split("__")[0];
-		if (baseFile.endsWith(".webm")) {
-			baseFile = baseFile.replace(".webm", "*.webm")
-		} else {
-			baseFile += "*.webm";
-		}
+		const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
+			.replace(".webm", "*.webm")
 
-		await lib.getWildCardFiles(baseFile).then((results) => {
+		const baseVariation = placeableDocument.texture.src.includes("_(")
+			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
+			: false;
 
-			results = results.filter(file => file.includes("__") || (!file.includes("__") && !file.includes("_(")));
+		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
+
+			results = Object.values(results.filter(file => {
+				return !file.includes("_thumb") && (
+					(!baseVariation && !file.includes(`_(`))
+					||
+					(baseVariation && file.includes(`_(${baseVariation})`))
+				);
+			}).reduce((acc, filePath) => {
+				const colorConfig = lib.determineFileColor(filePath);
+				if (!acc[colorConfig.colorName]) {
+					acc[colorConfig.colorName] = {
+						...colorConfig,
+						filePath
+					};
+				}
+				return acc;
+			}, {}));
 
 			if (results.length <= 1) return;
 
@@ -354,8 +366,9 @@ export class StatefulVideo {
 
 			const width = Math.min(204, results.length * 34);
 			selectColorContainer.css({ left: width * -0.37, width: width });
-			for (const filePath of results) {
-				const { colorName, color, tooltip } = lib.determineFileColor(filePath);
+
+			for (const colorConfig of results) {
+				const { colorName, color, tooltip, filePath } = colorConfig;
 				const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
 				if (!colorName) {
 					selectColorContainer.prepend(button);
@@ -366,9 +379,11 @@ export class StatefulVideo {
 					selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
 					selectColorButton.trigger("pointerdown");
 					await placeableDocument.update({
-						img: filePath
+						"texture.src": filePath
 					});
-					const hud = placeable instanceof Token ? canvas.tokens.hud : canvas.tokens.tiles;
+					const hud = placeable instanceof Token
+						? canvas.tokens.hud
+						: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -415,14 +430,15 @@ export class StatefulVideo {
 
 	static onPreUpdate(placeableDoc, changes) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
-		if (hasProperty(changes, "texture.src") && statefulVideo) {
+		const diff = foundry.utils.diffObject(placeableDoc, changes);
+		if (foundry.utils.hasProperty(diff, "texture.src") && statefulVideo) {
 			statefulVideo.newCurrentTime = statefulVideo.video.currentTime * 1000;
 		}
 	}
 
 	static onUpdate(placeableDoc, changes, firstUpdate = false) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
-		if (hasProperty(changes, "texture.src") && statefulVideo) {
+		if (foundry.utils.hasProperty(changes, "texture.src") && statefulVideo) {
 			setTimeout(() => {
 				statefulVideo.texture = placeableDoc.object.texture;
 				statefulVideo.video = placeableDoc.object.texture.baseTexture.resource.source;
@@ -432,9 +448,9 @@ export class StatefulVideo {
 				game.video.play(statefulVideo.video);
 			}, 100);
 		}
-		if (!hasProperty(changes, CONSTANTS.FLAGS)) return;
+		if (!foundry.utils.hasProperty(changes, CONSTANTS.FLAGS)) return;
 		if (!statefulVideo) {
-			if (!placeableDoc.object.isVideo || !getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length) return;
+			if (!placeableDoc.object.isVideo || !foundry.utils.getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length) return;
 			statefulVideo = StatefulVideo.make(placeableDoc, placeableDoc.object.texture);
 		}
 		statefulVideo.flags.updateData();
@@ -445,7 +461,7 @@ export class StatefulVideo {
 			return;
 		}
 		statefulVideo.offset = Number(Date.now()) - statefulVideo.flags.updated;
-		if (hasProperty(changes, CONSTANTS.STATES_FLAG)) {
+		if (foundry.utils.hasProperty(changes, CONSTANTS.STATES_FLAG)) {
 			statefulVideoHudMap.get(placeableDoc.uuid)?.render(true);
 			statefulVideo.still = false;
 			statefulVideo.playing = false;
@@ -455,11 +471,14 @@ export class StatefulVideo {
 			game.video.play(statefulVideo.video);
 			statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
 			return placeableDoc.update({
+				[CONSTANTS.CURRENT_STATE_FLAG]: statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE
+					? statefulVideo.flags.data.queuedState
+					: statefulVideo.flags.data.currentStateIndex,
 				[CONSTANTS.QUEUED_STATE_FLAG]: statefulVideo.flags.data.queuedState
 			});
 		}
 		statefulVideo.updateSelect();
-		if (hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate) {
+		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) || firstUpdate || statefulVideo.flags.previousState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE) {
 			statefulVideo.setupRandomTimers();
 			if (statefulVideo.nextButton) {
 				statefulVideo.nextButton.removeClass("active");
@@ -473,41 +492,12 @@ export class StatefulVideo {
 		}
 	}
 
-	static async changeVideoState(uuid, { state = null, step = 1, queue = false } = {}) {
-		const placeableDoc = fromUuidSync(uuid);
-		if (!placeableDoc) return false;
-		const flags = new Flags(placeableDoc);
-		flags.updateData();
-		if (!flags.states.length) {
-			return false;
-		}
-		if (state !== null && !queue) {
-			if (!lib.isRealNumber(state)) {
-				return false;
-			}
-			return placeableDoc.update({
-				[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
-				[CONSTANTS.PREVIOUS_STATE_FLAG]: flags.currentStateIndex,
-				[CONSTANTS.CURRENT_STATE_FLAG]: state,
-				[CONSTANTS.QUEUED_STATE_FLAG]: flags.determineNextStateIndex()
-			});
-		}
-		if (!lib.isRealNumber(step)) {
-			return false;
-		}
-		if (queue && !lib.isRealNumber(state)) {
-			return false;
-		}
-		return placeableDoc.update({
-			[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
-			[CONSTANTS.QUEUED_STATE_FLAG]: queue ? state : flags.getStateIndexFromSteps(step)
-		});
-	}
-
 	static isDataValid(flags, data) {
-		return (data?.[CONSTANTS.PREVIOUS_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]))
-			|| (data?.[CONSTANTS.CURRENT_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]))
-			|| (data?.[CONSTANTS.QUEUED_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]))
+		const previousStateFlagDifferent = (data?.[CONSTANTS.PREVIOUS_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.PREVIOUS_STATE] !== data?.[CONSTANTS.PREVIOUS_STATE_FLAG]));
+		const currentStateFlagDifferent = (data?.[CONSTANTS.CURRENT_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE] !== data?.[CONSTANTS.CURRENT_STATE_FLAG]));
+		const queuedStateFlagDifferent = (data?.[CONSTANTS.QUEUED_STATE_FLAG] !== undefined && (flags.data[CONSTANTS.FLAG_KEYS.QUEUED_STATE] !== data?.[CONSTANTS.QUEUED_STATE_FLAG]));
+		const previousFlagIsRandomState = flags.data.states[(data?.[CONSTANTS.PREVIOUS_STATE_FLAG] ?? flags.data[CONSTANTS.FLAG_KEYS.CURRENT_STATE])]?.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE;
+		return previousStateFlagDifferent || currentStateFlagDifferent || queuedStateFlagDifferent || previousFlagIsRandomState;
 	}
 
 	async update(data) {
@@ -515,7 +505,7 @@ export class StatefulVideo {
 
 		if (!StatefulVideo.isDataValid(this.flags, data)) return;
 
-		data[CONSTANTS.UPDATED_FLAG] = Number(Date.now());
+		data[CONSTANTS.UPDATED_FLAG] = data[CONSTANTS.UPDATED_FLAG] ?? Number(Date.now());
 
 		if (game.user.isGM) {
 			return this.document.update(data);
@@ -548,8 +538,14 @@ export class StatefulVideo {
 	}
 
 	async updateState(stateIndex) {
+		let previousStateIndex = this.flags.currentStateIndex;
+		if (this.flags.states[stateIndex].behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE) {
+			previousStateIndex = stateIndex;
+			stateIndex = this.flags.determineNextStateIndex(stateIndex);
+		}
 		const updates = {
-			[CONSTANTS.PREVIOUS_STATE_FLAG]: this.flags.currentStateIndex,
+			[CONSTANTS.UPDATED_FLAG]: Number(Date.now()),
+			[CONSTANTS.PREVIOUS_STATE_FLAG]: previousStateIndex,
 			[CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
 			[CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex),
 			"texture.src": this.flags.determineFile(stateIndex)
@@ -682,8 +678,11 @@ export class StatefulVideo {
 
 	evaluateVisibility() {
 		const hidden = this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN;
-		this.document.object.renderable = !hidden || game.user.isGM;
-		this.document.object.mesh.alpha = hidden ? (game.user.isGM ? 0.5 : 0.0) : this.document.alpha;
+		if (this.document.object) this.document.object.renderable = !hidden || game.user.isGM;
+		if (this.document.object.mesh) {
+			this.document.object.mesh.renderable = !hidden || game.user.isGM;
+			this.document.object.mesh.alpha = hidden ? (game.user.isGM ? 0.5 : 0.0) : this.document.alpha;
+		}
 		return hidden;
 	}
 
@@ -705,7 +704,7 @@ export class StatefulVideo {
 
 		if (!this.flags?.states?.length || !this.document?.object) return;
 
-		const startTime = this.newCurrentTime ?? this.determineStartTime(this.flags.currentStateIndex) ?? 0;
+		const startTime = this.newCurrentTime ?? this.determineStartTime(this.flags.currentStateIndex);
 		const endTime = this.determineEndTime(this.flags.currentStateIndex) ?? this.duration;
 		this.newCurrentTime = null;
 
@@ -738,7 +737,7 @@ export class StatefulVideo {
 		}, Math.ceil(waitDuration));
 	}
 
-	handleStillBehavior(startTime) {
+	async handleStillBehavior(startTime) {
 
 		this.setupRandomTimers();
 
@@ -750,9 +749,10 @@ export class StatefulVideo {
 		}
 		this.video.addEventListener("seeked", fn);
 
-		this.video.play();
+		await this.video.play();
+		this.video.loop = false;
 		this.video.currentTime = (startTime ?? 0) / 1000;
-		this.video.pause();
+		this.video.pause()
 
 		return false;
 	}
@@ -769,6 +769,12 @@ export class StatefulVideo {
 
 		const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
 		const offsetStartTime = (startTime + offsetLoopTime);
+
+		if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent) {
+			return {
+				playing: true, loop: true, offset: offsetStartTime / 1000
+			};
+		}
 
 		this.offset = 0;
 
@@ -848,11 +854,11 @@ class Flags {
 	}
 
 	get baseFile() {
-		return getProperty(this.doc, CONSTANTS.BASE_FILE_FLAG) ?? this.currentFile;
+		return foundry.utils.getProperty(this.doc, CONSTANTS.BASE_FILE_FLAG) ?? this.currentFile;
 	}
 
 	get folderPath() {
-		return getProperty(this.doc, CONSTANTS.FOLDER_PATH_FLAG) ?? lib.getFolder(this.baseFile);
+		return foundry.utils.getProperty(this.doc, CONSTANTS.FOLDER_PATH_FLAG) ?? lib.getFolder(this.baseFile);
 	}
 
 	get useFiles() {
@@ -936,9 +942,9 @@ class Flags {
 	}
 
 	getData() {
-		const documentFlags = getProperty(this.doc, CONSTANTS.FLAGS);
+		const documentFlags = foundry.utils.getProperty(this.doc, CONSTANTS.FLAGS);
 		if (currentDelegator && !currentDelegator.isGM) {
-			const userFlags = getProperty(currentDelegator, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + this.delegationUuid);
+			const userFlags = foundry.utils.getProperty(currentDelegator, CONSTANTS.DELEGATED_STATEFUL_VIDEOS_FLAG + "." + this.delegationUuid);
 			if (userFlags?.updated && documentFlags?.updated && userFlags?.updated > documentFlags?.updated) {
 				return userFlags;
 			}
@@ -987,7 +993,8 @@ class Flags {
 
 		const nextStates = this.states.filter(s => {
 			return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
-		}).map(s => this.states.indexOf(s))
+		}).map(s => this.states.indexOf(s));
+
 		if (nextStates.length) {
 			return nextStates;
 		}
@@ -1025,6 +1032,10 @@ class Flags {
 			case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
 				const nextIndex = this.getStateById(state.nextState);
 				return nextIndex >= 0 ? nextIndex : defaultIndex;
+
+			case CONSTANTS.BEHAVIORS.RANDOM_STATE:
+				const nextStates = state.randomState.map(id => this.states.findIndex(s => s.id === id)).filter(i => i > -1);
+				return nextStates.length ? lib.randomArrayElement(nextStates) : defaultIndex;
 		}
 
 		return index;
@@ -1034,8 +1045,22 @@ class Flags {
 	determineFile(stateIndex) {
 
 		const state = this.states[stateIndex];
-		if (!this.useFiles || !state.file || !this.folderPath) return this.baseFile;
-		return this.folderPath + "/" + state.file;
+		if (this.useFiles && this.folderPath) {
+			let filePath = state.file
+				? this.folderPath + "/" + state.file
+				: this.baseFile;
+
+			if (this.currentFile.includes("__")) {
+				const colorVariation = this.currentFile.split("__")[1].split(".")[0];
+				filePath = filePath.replace(".webm", `__${colorVariation}.webm`)
+			}
+
+			return filePath;
+		}
+		if (this.currentFile.includes("__")) {
+			return this.currentFile;
+		}
+		return this.baseFile;
 
 	}
 

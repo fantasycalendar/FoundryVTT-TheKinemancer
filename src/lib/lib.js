@@ -4,13 +4,16 @@ export function isActiveGM(user) {
 	return user.active && user.isGM;
 }
 
+
 export function getActiveGMs() {
 	return game.users.filter(isActiveGM);
 }
 
+
 export function getActiveUsers() {
 	return game.users.filter(user => user.active);
 }
+
 
 export function isResponsibleGM() {
 	if (!game.user.isGM) {
@@ -19,13 +22,16 @@ export function isResponsibleGM() {
 	return !getResponsibleGM();
 }
 
+
 export function getResponsibleGM() {
 	return getActiveGMs().find(other => other.id < game.user.id);
 }
 
+
 export function isGMConnected() {
 	return !!Array.from(game.users).find(user => user.isGM && user.active);
 }
+
 
 export function getSceneDelegator() {
 
@@ -34,7 +40,7 @@ export function getSceneDelegator() {
 	});
 
 	activeUsers.sort((a, b) => {
-		return (getProperty(b, CONSTANTS.UPDATED_FLAG) ?? 0) - (getProperty(a, CONSTANTS.UPDATED_FLAG) ?? 0);
+		return (foundry.utils.getProperty(b, CONSTANTS.UPDATED_FLAG) ?? 0) - (foundry.utils.getProperty(a, CONSTANTS.UPDATED_FLAG) ?? 0);
 	});
 
 	activeUsers.sort((a, b) => b.isGM - a.isGM);
@@ -42,10 +48,12 @@ export function getSceneDelegator() {
 	return activeUsers[0];
 }
 
+
 export function isRealNumber(n) {
 	const num = Number(n);
 	return typeof num == 'number' && !isNaN(num) && isFinite(num);
 }
+
 
 /**
  *  Returns a floating point number between a minimum and maximum value
@@ -60,6 +68,7 @@ export function randomFloatBetween(min, max) {
 	return Math.random() * (_max - _min) + _min;
 }
 
+
 /**
  *  Returns an integer between a minimum and maximum value
  *
@@ -71,6 +80,13 @@ export function randomIntegerBetween(min, max) {
 	return Math.floor(randomFloatBetween(min, max));
 }
 
+
+export function randomArrayElement(arr) {
+	const randomIndex = randomIntegerBetween(0, arr.length);
+	return arr[randomIndex];
+}
+
+
 export function transformNumber(num) {
 	// Flip the input number
 	const flippedNum = 1 - num;
@@ -81,6 +97,11 @@ export function transformNumber(num) {
 	// Flip the output number
 	return 1 - transformedNum;
 }
+
+export function uniqueArrayElements(arr) {
+	return Array.from(new Set(arr));
+}
+
 
 export async function getWildCardFiles(inFile) {
 
@@ -105,6 +126,7 @@ export async function getWildCardFiles(inFile) {
 	}
 }
 
+
 export function getVideoDuration(src) {
 	return new Promise((resolve) => {
 		const video = document.createElement('video');
@@ -115,6 +137,7 @@ export function getVideoDuration(src) {
 		video.src = src;
 	});
 }
+
 
 export function validateStates(states) {
 
@@ -172,9 +195,10 @@ export function validateStates(states) {
 	return errors;
 }
 
+
 export function determineFileColor(inFile) {
 
-	const lowerCaseFile = decodeURI(inFile.toLowerCase());
+	const lowerCaseFile = decodeURIComponent(inFile.toLowerCase());
 
 	for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
 		if (lowerCaseFile.endsWith(`__${colorName}.webm`)) {
@@ -190,14 +214,26 @@ export function determineFileColor(inFile) {
 
 }
 
+
 export function getThumbnailVariations(url) {
 	return Object.keys(CONST.IMAGE_FILE_EXTENSIONS).map(ext => url.replace(".webm", "." + ext));
 }
 
-export function getVideoJsonPath(placeableDocument) {
-	return decodeURI(placeableDocument.texture.src).split("  ")[0]
-		.replace(".webm", "") + ".json";
+
+export function getCleanWebmPath(placeableDocument) {
+	let path = decodeURIComponent(placeableDocument.texture.src)
+		.split("  ")[0]
+		.split("_(")[0]
+		.split("__")[0];
+	if (!path.toLowerCase().endsWith(".webm")) path += ".webm";
+	return path;
 }
+
+
+export function getVideoJsonPath(placeableDocument) {
+	return getCleanWebmPath(placeableDocument).replace(".webm", "") + ".json";
+}
+
 
 export function createJsonFile(placeableDocument, inData) {
 	const path = getVideoJsonPath(placeableDocument)
@@ -209,10 +245,63 @@ export function createJsonFile(placeableDocument, inData) {
 }
 
 
+export function updateFilters(settingsKey, values) {
+	const newTags = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
+	for (const [path, tags] of Object.entries(values)) {
+		if (tags.length) {
+			newTags[path] = tags;
+		} else {
+			delete newTags[path];
+		}
+	}
+	return game.settings.set(CONSTANTS.MODULE_NAME, settingsKey, newTags);
+}
+
+
 export function getFolder(path) {
 	const folderParts = path.split("/");
 	if (folderParts.length > 1) {
 		folderParts.pop();
 	}
 	return folderParts.join("/")
+}
+
+
+export function bytesToSize(bytes, decimals) {
+	if (bytes === 0) return '0 Bytes';
+	const k = 1024;
+	const dm = decimals < 0 ? 0 : decimals;
+	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+
+export function deltaTimeToString(deltaTime) {
+	const sec_num = deltaTime / 1000; // don't forget the second param
+	const hours = Math.floor(sec_num / 3600);
+	const minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+	const seconds = Math.floor(sec_num - (hours * 3600) - (minutes * 60));
+	const milliseconds = Math.floor(deltaTime);
+
+	let string = "";
+	if (hours) {
+		string += `${hours}h`
+	}
+	if (minutes) {
+		if (string.length) string += " ";
+		string += `${minutes}m`
+	}
+	if (seconds) {
+		if (string.length) string += " ";
+		string += `${seconds}s`
+	} else if (!hours && !minutes) {
+		string += `${milliseconds}ms`
+	}
+	return string;
+}
+
+
+export function wait(ms = 150) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }

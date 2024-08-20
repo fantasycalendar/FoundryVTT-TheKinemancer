@@ -5,20 +5,33 @@ import CONSTANTS from "./constants.js";
 import { copiedData, StatefulVideo } from "./StatefulVideo.js";
 import SocketHandler from "./socket.js";
 import * as lib from "./lib/lib.js";
-import { getFolder } from "./lib/lib.js";
+import Settings from "./settings.js";
+import DownloaderApp from "./applications/downloader/downloader-app.js";
+import registerFilePicker from "./filepicker.js";
 
 Hooks.once('init', async function () {
+
 	registerLibwrappers();
+	registerFilePicker();
+	Settings.initialize();
 	SocketHandler.initialize();
 	StatefulVideo.registerHooks();
 
 	game.thekinemancer = {
-		updateState: (uuid, options) => StatefulVideo.changeVideoState(uuid, options),
 		StatefulVideo,
 		CONSTANTS,
 		copiedData,
 		lib
 	};
+
+});
+
+Hooks.on("changeSidebarTab", (app) => {
+	const button = $("<button><i class='fas icon-thekinemancer_icon_logo'></i> The Kinemancer Downloader</button>");
+	button.on("click", () => {
+		DownloaderApp.show();
+	});
+	app.element.find("#settings-game").append(button)
 });
 
 Hooks.once('ready', async function () {
@@ -43,7 +56,7 @@ Hooks.once('ready', async function () {
 	if (game.user.isGM) {
 		for (const scene of Array.from(game.scenes)) {
 			const updates = Array.from(scene.tiles).map(tile => {
-				if (!getProperty(tile, CONSTANTS.STATES_FLAG)?.length || getProperty(tile, CONSTANTS.BASE_FILE_FLAG)) return false;
+				if (!foundry.utils.getProperty(tile, CONSTANTS.STATES_FLAG)?.length || foundry.utils.getProperty(tile, CONSTANTS.BASE_FILE_FLAG)) return false;
 				return {
 					_id: tile.id,
 					[CONSTANTS.BASE_FILE_FLAG]: tile?.texture?.src,
@@ -57,74 +70,6 @@ Hooks.once('ready', async function () {
 	}
 
 });
-
-
-Hooks.on('renderFilePicker', (filePicker, html) => {
-
-	const regex = new RegExp(/^.*?the-kinemancer\/.+__(.+).webm$/, "g")
-
-	html.find('[data-src="icons/svg/video.svg"]:visible').each((idx, imgElem) => {
-
-		const img = $(imgElem);
-		const parent = img.closest('[data-path]');
-		const path = parent.data('path');
-		const width = img.attr('width');
-		const height = img.attr('height');
-
-		if (path.match(regex)) {
-			parent.remove();
-			return;
-		}
-
-		new Promise(async (resolve) => {
-			let found = false;
-			const splitPath = path.split("/");
-			const file_name = splitPath.pop();
-			const variationPath = splitPath.join("/") + "/stills/" + file_name.replace(".webm", ".webp");
-			try {
-				await FilePicker.browse("data", variationPath).then(() => {
-					found = true;
-					setTimeout(() => {
-						img.attr("src", variationPath);
-					}, 150);
-				})
-			} catch (err) {
-			}
-			resolve();
-		});
-
-		const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}"></video>`);
-		video.hide();
-		parent.append(video);
-		const videoElem = video.get(0);
-		let playTimeout = null;
-
-		parent.addClass('video-parent');
-
-		parent.on("mouseenter", () => {
-			if (!videoElem.src) {
-				parent.addClass(' -loading');
-				videoElem.addEventListener('loadeddata', () => {
-					parent.removeClass('-loading');
-				}, false);
-				videoElem.src = path;
-			}
-			img.hide();
-			video.show();
-			playTimeout = setTimeout(() => {
-				videoElem.currentTime = 0;
-				videoElem.play().catch(e => console.error(e));
-			}, !!videoElem.src ? 0 : 750);
-		}).on("mouseleave", () => {
-			clearTimeout(playTimeout);
-			videoElem.pause();
-			videoElem.currentTime = 0;
-			video.hide();
-			img.show();
-		});
-	});
-});
-
 
 function registerLibwrappers() {
 
