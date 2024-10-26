@@ -15,6 +15,7 @@ export default function registerFilePicker() {
 class KinemancerFilePicker extends FilePicker {
 
 	filesWithColorVariants = {};
+	filesWithInternalVariants = {};
 	filesWithWebmThumbnails = {};
 	webmsWithJsonData = {};
 	deepSearch = "";
@@ -40,6 +41,7 @@ class KinemancerFilePicker extends FilePicker {
 		const packFiles = results.files.filter(file => {
 			return !file.includes("__")
 				&& !file.includes("_(")
+				&& !file.includes("_%5B")
 				&& !file.includes("_thumb")
 				&& file.toLowerCase().endsWith(".webm")
 		});
@@ -60,6 +62,11 @@ class KinemancerFilePicker extends FilePicker {
 				return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
 			}).map(path => {
 				return lib.determineFileColor(path);
+			});
+
+			// Find the internal variants
+			const internalVariants = results.files.filter(variantFile => {
+				return variantFile.includes("_%5") && variantFile.startsWith(fileWithoutExtension);
 			});
 
 			if (this.deepSearch) {
@@ -112,6 +119,7 @@ class KinemancerFilePicker extends FilePicker {
 			}
 
 			this.filesWithColorVariants[file] = lib.uniqueArrayElements(colorVariants.map(config => config.color));
+			this.filesWithInternalVariants[file] = !!internalVariants.length;
 
 			data.files.push({
 				name: file.split("/").pop(),
@@ -309,6 +317,10 @@ function filePickerHandler(filePicker, html) {
 		}
 		for (const [index, color] of colors.entries()) {
 			parent.append($(`<div class="ats-color-circle" style="${color} right: ${(index * 5) + 3}px;"></div>`))
+		}
+
+		if (filePicker.filesWithInternalVariants[path]) {
+			parent.append($(`<div class="ats-variation-icon" style="left: 3px;"><img src="modules/the-kinemancer/assets/variant_icon.svg"/></div>`))
 		}
 
 		const webmPath = filePicker.filesWithWebmThumbnails[path] || path;

@@ -331,15 +331,32 @@ export class StatefulVideo {
 			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
 			: false;
 
+		const internalVariation = placeableDocument.texture.src.includes("_%5B")
+			? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
+			: false;
+
+		const colorVariation = placeableDocument.texture.src.includes("__")
+			? placeableDocument.texture.src.split("__")[1].split(".")[0]
+			: false;
+
 		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
 
-			results = Object.values(results.filter(file => {
-				return !file.includes("_thumb") && (
-					(!baseVariation && !file.includes(`_(`))
+			const nonThumbnails = results.filter(filePath => !filePath.includes("_thumb")).sort((a, b) => {
+				const a_value = (a.includes("_%5B")) + (a.includes("_(") * 10) + (a.includes("__") * 100);
+				const b_value = (b.includes("_%5B")) + (b.includes("_(") * 10) + (b.includes("__") * 100);
+				return a_value - b_value;
+			});
+
+			const internalVariations = nonThumbnails.filter(filePath => {
+				return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
+					(!baseVariation && !filePath.includes("_("))
 					||
-					(baseVariation && file.includes(`_(${baseVariation})`))
+					(baseVariation && filePath.includes(`_(${baseVariation})`))
 				);
-			}).reduce((acc, filePath) => {
+			})
+
+			const colorVariations = Object.values(nonThumbnails.reduce((acc, filePath) => {
+				if (internalVariation && !filePath.includes(`_%5B${internalVariation}%5D`)) return acc;
 				const colorConfig = lib.determineFileColor(filePath);
 				if (!acc[colorConfig.colorName]) {
 					acc[colorConfig.colorName] = {
@@ -350,30 +367,50 @@ export class StatefulVideo {
 				return acc;
 			}, {}));
 
-			if (results.length <= 1) return;
+			if (internalVariations.length <= 1 && colorVariations.length <= 1) return;
 
-			const selectColorContainer = $(`<div class="ats-color-container"></div>`);
+			const parentContainer = $(`<div class="ats-variation-container"></div>`);
+
+			const width = internalVariations.length > 1 ? 300 : Math.min(204, colorVariations.length * 34);
+			parentContainer.css({ left: width * -0.25, width });
 
 			selectColorButton.on('pointerdown', () => {
-				const newState = selectColorContainer.css('visibility') === "hidden" ? "visible" : "hidden";
-				selectColorContainer.css("visibility", newState);
+				const newState = parentContainer.css('visibility') === "hidden" ? "visible" : "hidden";
+				parentContainer.css("visibility", newState);
 			});
 
-			selectButtonContainer.append(selectColorButton);
-			selectButtonContainer.append(selectColorContainer);
+			const colorContainer = $(`<div class="ats-color-container"></div>`);
+			const variationContainer = $(`<div class="ats-variations"></div>`);
 
 			selectContainer.append(selectButtonContainer);
+			selectButtonContainer.append(selectColorButton);
+			selectButtonContainer.append(parentContainer);
+			parentContainer.append(variationContainer);
+			parentContainer.append(colorContainer);
 
-			const width = Math.min(204, results.length * 34);
-			selectColorContainer.css({ left: width * -0.37, width: width });
+			for (const variation of internalVariations) {
+				const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
+				const button = $(`<a>${name}</a>`)
+				variationContainer.append(button);
+				button.on("pointerdown", async () => {
+					await placeableDocument.update({
+						"texture.src": variation
+					});
+					const hud = placeable instanceof Token
+						? canvas.tokens.hud
+						: canvas.tiles.hud;
+					placeable.control();
+					hud.bind(placeable);
+				});
+			}
 
-			for (const colorConfig of results) {
+			for (const colorConfig of colorVariations) {
 				const { colorName, color, tooltip, filePath } = colorConfig;
 				const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
 				if (!colorName) {
-					selectColorContainer.prepend(button);
+					colorContainer.prepend(button);
 				} else {
-					selectColorContainer.append(button);
+					colorContainer.append(button);
 				}
 				button.on("pointerdown", async () => {
 					selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);

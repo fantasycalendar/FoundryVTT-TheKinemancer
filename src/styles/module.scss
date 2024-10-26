@@ -83,13 +83,12 @@
 
     }
 
-    .ats-color-container {
+    .ats-variation-container {
       position: absolute !important;
       visibility: hidden;
       display: flex;
-      max-width: 204px;
+      flex-direction: column;
       pointer-events: all;
-      flex-wrap: wrap;
 
       box-sizing: content-box;
       text-align: center;
@@ -98,7 +97,21 @@
       border: 1px solid #333;
       border-radius: 8px;
 
-      > div {
+      .ats-variations {
+        display: flex;
+        flex-direction: column;
+        border-bottom: 1px solid white;
+        padding: 0.25rem 0 0.5rem 0;
+        margin: 0 1rem 0.5rem 1rem;
+      }
+
+      .ats-color-container {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .ats-color-container > div {
         flex: 1 0 30px;
         max-width: 30px;
         width: 30px;
@@ -282,6 +295,21 @@
 
   &.ats-icon {
     background-color: #23221d;
+  }
+}
+
+.filepicker .ats-variation-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+
+  img {
+    border: 0;
+    width: 20px;
+    height: 20px;
   }
 }
 

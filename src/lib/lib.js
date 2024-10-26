@@ -224,6 +224,8 @@ export function getCleanWebmPath(placeableDocument) {
 	let path = decodeURIComponent(placeableDocument.texture.src)
 		.split("  ")[0]
 		.split("_(")[0]
+		.split("_[")[0]
+		.split("_%5B")[0]
 		.split("__")[0];
 	if (!path.toLowerCase().endsWith(".webm")) path += ".webm";
 	return path;
