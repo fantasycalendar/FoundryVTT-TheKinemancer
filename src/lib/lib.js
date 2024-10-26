@@ -206,6 +206,15 @@ export function determineFileColor(inFile) {
 		}
 	}
 
+	if (lowerCaseFile.includes("__")) {
+		const name = lowerCaseFile.split("__")[1].split(".")[0];
+		return {
+			colorName: name,
+			color: CONSTANTS.COLOR_CODE["other"],
+			tooltip: name
+		}
+	}
+
 	return {
 		colorName: false,
 		color: CONSTANTS.COLOR_CODE["none"],

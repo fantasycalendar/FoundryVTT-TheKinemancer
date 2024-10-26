@@ -124,6 +124,7 @@ CONSTANTS.BEHAVIOR_COLOR = {
 CONSTANTS.COLOR_CODE = {
 	"none": "background: repeating-conic-gradient(#888 0% 25%, #333 0% 50%) 50% / 40px 40px;",
 	"night": "background: url('modules/the-kinemancer/assets/color-night.svg');",
+	"other": "background: url('modules/the-kinemancer/assets/color-other.svg');",
 	"day": "background: url('modules/the-kinemancer/assets/color-day.svg');",
 	"spring": "background: url('modules/the-kinemancer/assets/color-spring.svg');",
 	"summer": "background: url('modules/the-kinemancer/assets/color-summer.svg');",
