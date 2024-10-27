@@ -110,9 +110,9 @@ export class StatefulVideo {
 				if (!statefulVideo) return;
 				// Call the update method, and pass the user that is the current delegator
 				StatefulVideo.onUpdate(statefulVideo.document, // Construct a similar diff as normal video updates would create
-					foundry.utils.mergeObject({
-						[CONSTANTS.FLAGS]: statefulVideos[key]
-					}, {}), firstUpdate);
+						foundry.utils.mergeObject({
+							[CONSTANTS.FLAGS]: statefulVideos[key]
+						}, {}), firstUpdate);
 			});
 			firstUpdate = false;
 		});
@@ -142,18 +142,18 @@ export class StatefulVideo {
 			if (!lib.isResponsibleGM()) return;
 			const path = lib.getVideoJsonPath(placeableDoc);
 			fetch(path)
-				.then(response => response.json())
-				.then((result) => {
-					const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
-					result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
-					const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
-					if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
-						result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
-					}
-					placeableDoc.update(result);
-				})
-				.catch(err => {
-				});
+					.then(response => response.json())
+					.then((result) => {
+						const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+						result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+						const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+						if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+							result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+						}
+						placeableDoc.update(result);
+					})
+					.catch(err => {
+					});
 		});
 
 		let firstUserGesture = false;
@@ -268,6 +268,20 @@ export class StatefulVideo {
     </div>`);
 	}
 
+
+	static makeStateSelect(statefulVideo) {
+		if (!statefulVideo.flags.states.length) return false;
+		const select = $("<select class='ats-stateful-select'></select>");
+		select.on('change', function () {
+			statefulVideo.changeState({ state: Number($(this).val()), fast: true });
+		});
+
+		for (const [index, state] of statefulVideo.flags.states.entries()) {
+			select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
+		}
+		return select;
+	}
+
 	/**
 	 * Adds additional control elements to the tile HUD relating to Animated Tile States
 	 *
@@ -298,18 +312,9 @@ export class StatefulVideo {
 				iconContainer.append(stateBtn);
 			}
 
-			if (statefulVideo.flags.states.length) {
-				const select = $("<select class='ats-stateful-video-ui-button'></select>");
-				select.on('change', function () {
-					statefulVideo.changeState({ state: Number($(this).val()), fast: true });
-				});
-
-				for (const [index, state] of statefulVideo.flags.states.entries()) {
-					select.append(`<option ${index === statefulVideo.flags.currentStateIndex ? "selected" : ""} value="${index}">${state.name}</option>`);
-				}
-
+			if (statefulVideo.flags.clientDropdown && statefulVideo.flags.states.length) {
+				const select = StatefulVideo.makeStateSelect(statefulVideo);
 				selectContainer.append(select);
-
 				statefulVideo.select = select;
 			}
 		}
@@ -325,19 +330,19 @@ export class StatefulVideo {
 
 
 		const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
-			.replace(".webm", "*.webm")
+				.replace(".webm", "*.webm")
 
 		const baseVariation = placeableDocument.texture.src.includes("_(")
-			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
-			: false;
+				? placeableDocument.texture.src.split("_(")[1].split(")")[0]
+				: false;
 
 		const internalVariation = placeableDocument.texture.src.includes("_%5B")
-			? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
-			: false;
+				? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
+				: false;
 
 		const colorVariation = placeableDocument.texture.src.includes("__")
-			? placeableDocument.texture.src.split("__")[1].split(".")[0]
-			: false;
+				? placeableDocument.texture.src.split("__")[1].split(".")[0]
+				: false;
 
 		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
 
@@ -349,9 +354,9 @@ export class StatefulVideo {
 
 			const internalVariations = nonThumbnails.filter(filePath => {
 				return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
-					(!baseVariation && !filePath.includes("_("))
-					||
-					(baseVariation && filePath.includes(`_(${baseVariation})`))
+						(!baseVariation && !filePath.includes("_("))
+						||
+						(baseVariation && filePath.includes(`_(${baseVariation})`))
 				);
 			})
 
@@ -372,7 +377,7 @@ export class StatefulVideo {
 			const parentContainer = $(`<div class="ats-variation-container"></div>`);
 
 			const width = internalVariations.length > 1 ? 300 : Math.min(204, colorVariations.length * 34);
-			parentContainer.css({ left: width * -0.25, width });
+			parentContainer.css({ left: width * -0.4, width });
 
 			selectColorButton.on('pointerdown', () => {
 				const newState = parentContainer.css('visibility') === "hidden" ? "visible" : "hidden";
@@ -397,8 +402,8 @@ export class StatefulVideo {
 						"texture.src": variation
 					});
 					const hud = placeable instanceof Token
-						? canvas.tokens.hud
-						: canvas.tiles.hud;
+							? canvas.tokens.hud
+							: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -419,8 +424,8 @@ export class StatefulVideo {
 						"texture.src": filePath
 					});
 					const hud = placeable instanceof Token
-						? canvas.tokens.hud
-						: canvas.tiles.hud;
+							? canvas.tokens.hud
+							: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -509,8 +514,8 @@ export class StatefulVideo {
 			statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
 			return placeableDoc.update({
 				[CONSTANTS.CURRENT_STATE_FLAG]: statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE
-					? statefulVideo.flags.data.queuedState
-					: statefulVideo.flags.data.currentStateIndex,
+						? statefulVideo.flags.data.queuedState
+						: statefulVideo.flags.data.currentStateIndex,
 				[CONSTANTS.QUEUED_STATE_FLAG]: statefulVideo.flags.data.queuedState
 			});
 		}
@@ -553,10 +558,10 @@ export class StatefulVideo {
 		}
 
 		const deconstructedData = Object.fromEntries(Object.entries(data)
-			.map(([key, value]) => {
-				const newKey = key.split(".");
-				return [newKey[newKey.length - 1], value];
-			}));
+				.map(([key, value]) => {
+					const newKey = key.split(".");
+					return [newKey[newKey.length - 1], value];
+				}));
 
 		const key = `${this.document.parent.id}_${this.document.documentName}_${this.document.id}`;
 		return game.user.update({
@@ -629,9 +634,9 @@ export class StatefulVideo {
 		if (game.user !== currentDelegator) return;
 
 		if (!(
-			this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL
-			|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN
-			|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.LOOP
+				this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL
+				|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN
+				|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.LOOP
 		)) {
 			return false;
 		}
@@ -667,8 +672,8 @@ export class StatefulVideo {
 
 		const currState = this.flags.states?.[stateIndex];
 		const currStart = lib.isRealNumber(currState?.start)
-			? Number(currState?.start) * this.flags.durationMultiplier
-			: (currState?.start ?? 0);
+				? Number(currState?.start) * this.flags.durationMultiplier
+				: (currState?.start ?? 0);
 
 		switch (currStart) {
 
@@ -693,8 +698,8 @@ export class StatefulVideo {
 
 		const currState = this.flags.states?.[stateIndex];
 		const currEnd = lib.isRealNumber(currState?.end)
-			? Number(currState?.end) * this.flags.durationMultiplier
-			: (currState?.end ?? this.duration);
+				? Number(currState?.end) * this.flags.durationMultiplier
+				: (currState?.end ?? this.duration);
 
 		switch (currEnd) {
 
@@ -894,6 +899,10 @@ class Flags {
 		return foundry.utils.getProperty(this.doc, CONSTANTS.BASE_FILE_FLAG) ?? this.currentFile;
 	}
 
+	get clientDropdown() {
+		return foundry.utils.getProperty(this.doc, CONSTANTS.CLIENT_DROPDOWN) ?? false;
+	}
+
 	get folderPath() {
 		return foundry.utils.getProperty(this.doc, CONSTANTS.FOLDER_PATH_FLAG) ?? lib.getFolder(this.baseFile);
 	}
@@ -1084,8 +1093,8 @@ class Flags {
 		const state = this.states[stateIndex];
 		if (this.useFiles && this.folderPath) {
 			let filePath = state.file
-				? this.folderPath + "/" + state.file
-				: this.baseFile;
+					? this.folderPath + "/" + state.file
+					: this.baseFile;
 
 			if (this.currentFile.includes("__")) {
 				const colorVariation = this.currentFile.split("__")[1].split(".")[0];

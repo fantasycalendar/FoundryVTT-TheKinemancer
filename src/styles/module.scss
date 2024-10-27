@@ -38,51 +38,6 @@
     position: absolute;
     top: 100%;
 
-    .ats-hud-controls-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      margin-bottom: 0.5rem;
-    }
-
-    .ats-hud-select-container {
-
-      display: flex;
-      flex-direction: row;
-      width: auto;
-      height: 100%;
-      font-size: initial;
-      color: white;
-      pointer-events: all;
-
-      .ats-hud-icon-container {
-        display: grid;
-        grid-template-columns: repeat(6, auto);
-      }
-
-      > select {
-        font-size: var(--font-size-28);
-        color: rgb(218, 218, 218);
-        border-radius: 8px;
-        height: 40px;
-        border: 1px solid #333;
-
-        &:focus {
-          box-shadow: none;
-        }
-
-        > option {
-          background: rgba(0, 0, 0, 0.6);
-        }
-      }
-
-      > div {
-        position: relative;
-      }
-
-    }
-
     .ats-variation-container {
       position: absolute !important;
       visibility: hidden;
@@ -150,25 +105,6 @@
       }
     }
 
-    .ats-stateful-video-ui-button {
-      position: relative;
-      height: 40px;
-      max-height: 40px;
-      box-sizing: content-box;
-      flex: 0 0 40px;
-      margin: 8px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 0 10px var(--color-shadow-dark);
-      border: 1px solid #333;
-      border-radius: 8px;
-
-      > img {
-        padding: 3px;
-        border: 0;
-      }
-    }
-
     .ats-sources-container {
 
       pointer-events: all;
@@ -196,6 +132,67 @@
 
   }
 
+}
+
+
+.ats-hud-select-container, .ats-hud-controls-container {
+
+  display: flex;
+  flex-direction: row;
+  width: auto;
+  height: 100%;
+  font-size: initial;
+  color: white;
+  pointer-events: all;
+
+  .ats-hud-icon-container {
+    display: grid;
+    grid-template-columns: repeat(6, auto);
+  }
+
+  > select {
+    font-size: var(--font-size-28);
+    color: rgb(218, 218, 218);
+    border-radius: 8px;
+    height: 40px;
+    border: 1px solid #333;
+
+    &:focus {
+      box-shadow: none;
+    }
+
+    > option {
+      background: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  > div {
+    position: relative;
+  }
+
+}
+
+.ats-stateful-video-ui-button, .ats-stateful-select {
+  position: relative;
+  height: 40px;
+  max-height: 40px;
+  box-sizing: content-box;
+  flex: 0 0 40px;
+  margin: 8px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 10px var(--color-shadow-dark);
+  border: 1px solid #333;
+  border-radius: 8px;
+
+  > img {
+    padding: 3px;
+    border: 0;
+  }
+}
+
+.ats-stateful-select {
+  margin: 8px 24px
 }
 
 .ats-tag-selected {
