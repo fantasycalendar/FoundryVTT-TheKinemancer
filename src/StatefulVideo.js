@@ -37,7 +37,7 @@ export class StatefulVideo {
 				statefulVideo.ready = true;
 				statefulVideo.flags.updateData();
 				statefulVideo.setupRandomTimers();
-				game.video.play(statefulVideo.video);
+				statefulVideo.play();
 			}
 		});
 	}
@@ -110,9 +110,9 @@ export class StatefulVideo {
 				if (!statefulVideo) return;
 				// Call the update method, and pass the user that is the current delegator
 				StatefulVideo.onUpdate(statefulVideo.document, // Construct a similar diff as normal video updates would create
-						foundry.utils.mergeObject({
-							[CONSTANTS.FLAGS]: statefulVideos[key]
-						}, {}), firstUpdate);
+					foundry.utils.mergeObject({
+						[CONSTANTS.FLAGS]: statefulVideos[key]
+					}, {}), firstUpdate);
 			});
 			firstUpdate = false;
 		});
@@ -142,18 +142,18 @@ export class StatefulVideo {
 			if (!lib.isResponsibleGM()) return;
 			const path = lib.getVideoJsonPath(placeableDoc);
 			fetch(path)
-					.then(response => response.json())
-					.then((result) => {
-						const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
-						result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
-						const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
-						if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
-							result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
-						}
-						placeableDoc.update(result);
-					})
-					.catch(err => {
-					});
+				.then(response => response.json())
+				.then((result) => {
+					const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+					result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+					const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+					if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+						result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+					}
+					placeableDoc.update(result);
+				})
+				.catch(err => {
+				});
 		});
 
 		let firstUserGesture = false;
@@ -185,7 +185,8 @@ export class StatefulVideo {
 		const refreshDebounce = foundry.utils.debounce((statefulVideo) => {
 			if (game?.video && statefulVideo.video) {
 				statefulVideo.updateVideo();
-				game.video.play(statefulVideo.video);
+				if (!statefulVideo.playing) return;
+				statefulVideo.play();
 			}
 		}, 200);
 
@@ -219,7 +220,7 @@ export class StatefulVideo {
 			const statefulVideo = this.make(placeable.document, placeable.texture);
 			if (!statefulVideo) return;
 			if (game?.video && statefulVideo.video) {
-				game.video.play(statefulVideo.video);
+				statefulVideo.play();
 			}
 		}
 	}
@@ -330,19 +331,19 @@ export class StatefulVideo {
 
 
 		const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
-				.replace(".webm", "*.webm")
+			.replace(".webm", "*.webm")
 
 		const baseVariation = placeableDocument.texture.src.includes("_(")
-				? placeableDocument.texture.src.split("_(")[1].split(")")[0]
-				: false;
+			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
+			: false;
 
 		const internalVariation = placeableDocument.texture.src.includes("_%5B")
-				? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
-				: false;
+			? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
+			: false;
 
 		const colorVariation = placeableDocument.texture.src.includes("__")
-				? placeableDocument.texture.src.split("__")[1].split(".")[0]
-				: false;
+			? placeableDocument.texture.src.split("__")[1].split(".")[0]
+			: false;
 
 		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
 
@@ -354,9 +355,9 @@ export class StatefulVideo {
 
 			const internalVariations = nonThumbnails.filter(filePath => {
 				return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
-						(!baseVariation && !filePath.includes("_("))
-						||
-						(baseVariation && filePath.includes(`_(${baseVariation})`))
+					(!baseVariation && !filePath.includes("_("))
+					||
+					(baseVariation && filePath.includes(`_(${baseVariation})`))
 				);
 			})
 
@@ -402,8 +403,8 @@ export class StatefulVideo {
 						"texture.src": variation
 					});
 					const hud = placeable instanceof Token
-							? canvas.tokens.hud
-							: canvas.tiles.hud;
+						? canvas.tokens.hud
+						: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -424,8 +425,8 @@ export class StatefulVideo {
 						"texture.src": filePath
 					});
 					const hud = placeable instanceof Token
-							? canvas.tokens.hud
-							: canvas.tiles.hud;
+						? canvas.tokens.hud
+						: canvas.tiles.hud;
 					placeable.control();
 					hud.bind(placeable);
 				});
@@ -446,6 +447,11 @@ export class StatefulVideo {
 			html.find(".col.middle").append(root);
 		}
 
+	}
+
+	play() {
+		if (!this.document.autoplay) return;
+		return game.video.play(this.video);
 	}
 
 	updateVideo() {
@@ -487,7 +493,7 @@ export class StatefulVideo {
 				statefulVideo.still = false;
 				statefulVideo.playing = false;
 				clearTimeout(statefulVideo.timeout);
-				game.video.play(statefulVideo.video);
+				statefulVideo.play();
 			}, 100);
 		}
 		if (!foundry.utils.hasProperty(changes, CONSTANTS.FLAGS)) return;
@@ -510,12 +516,12 @@ export class StatefulVideo {
 			statefulVideo.clearRandomTimers();
 			statefulVideo.setupRandomTimers();
 			clearTimeout(statefulVideo.timeout);
-			game.video.play(statefulVideo.video);
+			statefulVideo.play();
 			statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
 			return placeableDoc.update({
 				[CONSTANTS.CURRENT_STATE_FLAG]: statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE
-						? statefulVideo.flags.data.queuedState
-						: statefulVideo.flags.data.currentStateIndex,
+					? statefulVideo.flags.data.queuedState
+					: statefulVideo.flags.data.currentStateIndex,
 				[CONSTANTS.QUEUED_STATE_FLAG]: statefulVideo.flags.data.queuedState
 			});
 		}
@@ -530,7 +536,7 @@ export class StatefulVideo {
 			}
 			statefulVideo.still = false;
 			statefulVideo.playing = false;
-			game.video.play(statefulVideo.video);
+			statefulVideo.play();
 		}
 	}
 
@@ -558,10 +564,10 @@ export class StatefulVideo {
 		}
 
 		const deconstructedData = Object.fromEntries(Object.entries(data)
-				.map(([key, value]) => {
-					const newKey = key.split(".");
-					return [newKey[newKey.length - 1], value];
-				}));
+			.map(([key, value]) => {
+				const newKey = key.split(".");
+				return [newKey[newKey.length - 1], value];
+			}));
 
 		const key = `${this.document.parent.id}_${this.document.documentName}_${this.document.id}`;
 		return game.user.update({
@@ -634,9 +640,9 @@ export class StatefulVideo {
 		if (game.user !== currentDelegator) return;
 
 		if (!(
-				this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL
-				|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN
-				|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.LOOP
+			this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL
+			|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN
+			|| this.flags.currentState.behavior === CONSTANTS.BEHAVIORS.LOOP
 		)) {
 			return false;
 		}
@@ -672,8 +678,8 @@ export class StatefulVideo {
 
 		const currState = this.flags.states?.[stateIndex];
 		const currStart = lib.isRealNumber(currState?.start)
-				? Number(currState?.start) * this.flags.durationMultiplier
-				: (currState?.start ?? 0);
+			? Number(currState?.start) * this.flags.durationMultiplier
+			: (currState?.start ?? 0);
 
 		switch (currStart) {
 
@@ -698,8 +704,8 @@ export class StatefulVideo {
 
 		const currState = this.flags.states?.[stateIndex];
 		const currEnd = lib.isRealNumber(currState?.end)
-				? Number(currState?.end) * this.flags.durationMultiplier
-				: (currState?.end ?? this.duration);
+			? Number(currState?.end) * this.flags.durationMultiplier
+			: (currState?.end ?? this.duration);
 
 		switch (currEnd) {
 
@@ -733,10 +739,10 @@ export class StatefulVideo {
 		this.playing = false;
 		this.ignoreDate = true;
 		clearTimeout(this.timeout);
-		game.video.play(this.video);
+		this.play()
 	}
 
-	getVideoPlaybackState() {
+	getVideoPlaybackState(options) {
 
 		if (!this.ready) {
 			return {
@@ -753,20 +759,20 @@ export class StatefulVideo {
 		this.evaluateVisibility();
 
 		this.still = false;
-		this.playing = true;
+		this.playing = options.playing && this.document.autoplay;
 		this.texture.update();
 
 		switch (this.flags.currentState.behavior) {
 
 			case CONSTANTS.BEHAVIORS.STILL:
 			case CONSTANTS.BEHAVIORS.STILL_HIDDEN:
-				return this.handleStillBehavior(startTime);
+				return this.handleStillBehavior(options, startTime);
 
 			case CONSTANTS.BEHAVIORS.LOOP:
-				return this.handleLoopBehavior(startTime, endTime);
+				return this.handleLoopBehavior(options, startTime, endTime);
 
 			default:
-				return this.handleOnceBehavior(startTime, endTime);
+				return this.handleOnceBehavior(options, startTime, endTime);
 
 		}
 	}
@@ -779,7 +785,7 @@ export class StatefulVideo {
 		}, Math.ceil(waitDuration));
 	}
 
-	async handleStillBehavior(startTime) {
+	async handleStillBehavior(options, startTime) {
 
 		this.setupRandomTimers();
 
@@ -799,7 +805,7 @@ export class StatefulVideo {
 		return false;
 	}
 
-	handleLoopBehavior(startTime, endTime = 0) {
+	handleLoopBehavior(options, startTime, endTime = 0) {
 
 		this.setupRandomTimers();
 
@@ -814,7 +820,7 @@ export class StatefulVideo {
 
 		if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent) {
 			return {
-				playing: true, loop: true, offset: offsetStartTime / 1000
+				playing: options.playing && this.document.autoplay, loop: true, offset: offsetStartTime / 1000
 			};
 		}
 
@@ -825,16 +831,16 @@ export class StatefulVideo {
 			if (this.flags.queuedStateIndexIsDifferent) {
 				return this.updateState(this.flags.queuedStateIndex);
 			}
-			game.video.play(this.video);
+			this.play();
 		}, loopDuration - offsetLoopTime);
 
 		return {
-			playing: true, loop: false, offset: offsetStartTime / 1000
+			playing: options.playing && this.document.autoplay, loop: false, offset: offsetStartTime / 1000
 		}
 
 	}
 
-	handleOnceBehavior(startTime, endTime) {
+	handleOnceBehavior(options, startTime, endTime) {
 
 		this.clearRandomTimers();
 
@@ -868,7 +874,7 @@ export class StatefulVideo {
 		this.ignoreDate = false;
 
 		return {
-			playing: true, loop: false, offset: startTime / 1000
+			playing: options.playing && this.document.autoplay, loop: false, offset: startTime / 1000
 		}
 
 	}
@@ -1093,8 +1099,8 @@ class Flags {
 		const state = this.states[stateIndex];
 		if (this.useFiles && this.folderPath) {
 			let filePath = state.file
-					? this.folderPath + "/" + state.file
-					: this.baseFile;
+				? this.folderPath + "/" + state.file
+				: this.baseFile;
 
 			if (this.currentFile.includes("__")) {
 				const colorVariation = this.currentFile.split("__")[1].split(".")[0];

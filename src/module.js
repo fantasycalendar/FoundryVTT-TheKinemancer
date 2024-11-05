@@ -48,7 +48,7 @@ Hooks.once('ready', async function () {
 		} else {
 			StatefulVideo.getAll().forEach(statefulVideo => {
 				statefulVideo.offset = Number(Date.now()) - statefulVideo.flags.updated;
-				game.video.play(statefulVideo.video);
+				statefulVideo.play();
 			});
 		}
 	});
@@ -88,11 +88,14 @@ function registerLibwrappers() {
 	}, "MIXED");
 
 	libWrapper.register(CONSTANTS.MODULE_NAME, 'VideoHelper.prototype.play', async function (wrapped, video, options) {
+		const videoOptions = { playing: options?.playing ?? true };
 		for (const statefulVideo of StatefulVideo.getAll().values()) {
 			if (video === statefulVideo.video) {
-				if (this.locked || statefulVideo.destroyed || statefulVideo.playing || statefulVideo.still) return;
+				if (this.locked || statefulVideo.destroyed || (statefulVideo.playing && videoOptions.playing) || statefulVideo.still) {
+					return;
+				}
 				if (window.document.hidden) return video.pause();
-				const newOptions = statefulVideo.getVideoPlaybackState();
+				const newOptions = statefulVideo.getVideoPlaybackState(videoOptions);
 				if (!newOptions) return;
 				return wrapped(video, newOptions);
 			}
