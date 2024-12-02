@@ -2,6 +2,7 @@ import CONSTANTS from "./constants.js";
 import * as lib from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 import { get, writable } from "svelte/store";
+import { getVideoDimensions } from "./lib/lib.js";
 
 const statefulVideoHudMap = new Map();
 const managedStatefulVideos = new Map();
@@ -213,7 +214,6 @@ export class StatefulVideo {
                 placeableDoc.update(result);
             })
             .catch(err => {
-                console.error(err)
             });
     }
 
@@ -308,6 +308,15 @@ export class StatefulVideo {
 
         const selectContainer = $("<div class='ats-hud-select-container'></div>");
 
+        const statefulVideoColor = lib.determineFileColor(placeableDocument.texture?.src || "");
+
+        const selectButtonContainer = $("<div class='ats-color-variations-button-container'></div>");
+
+        const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
+      ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
+      ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
+    </div>`);
+
         if (statefulVideo) {
 
             const iconContainer = $("<div class='ats-hud-icon-container'></div>");
@@ -327,17 +336,11 @@ export class StatefulVideo {
                 selectContainer.append(select);
                 statefulVideo.select = select;
             }
+
+            if (statefulVideo.flags.states.some(state => state.icon)) {
+                selectButtonContainer.addClass("ats-left-padding");
+            }
         }
-
-        const statefulVideoColor = lib.determineFileColor(placeableDocument.texture?.src || "");
-
-        const selectButtonContainer = $("<div></div>");
-
-        const selectColorButton = $(`<div class="ats-hud-control-icon ats-stateful-video-ui-button" data-tooltip-direction="UP" data-tooltip="Change Color">
-      ${statefulVideoColor.icon ? `<i class="fas ${statefulVideoColor.icon}"></i>` : ""}
-      ${statefulVideoColor.color ? `<div class="ats-color-button" style="${statefulVideoColor.color}"></div>` : ""}
-    </div>`);
-
 
         const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
             .replace(".webm", "*.webm")
@@ -380,7 +383,9 @@ export class StatefulVideo {
                     };
                 }
                 return acc;
-            }, {}));
+            }, {})).sort((a, b) => {
+                return a.order - b.order;
+            });
 
             if (internalVariations.length <= 1 && colorVariations.length <= 1) return;
 
@@ -403,42 +408,56 @@ export class StatefulVideo {
             parentContainer.append(variationContainer);
             parentContainer.append(colorContainer);
 
-            for (const variation of internalVariations) {
-                const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
-                const button = $(`<a>${name}</a>`)
-                variationContainer.append(button);
-                button.on("pointerdown", async () => {
-                    await placeableDocument.update({
-                        "texture.src": variation
+            if (internalVariations.length > 1) {
+                for (const variation of internalVariations) {
+                    const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
+                    const button = $(`<a>${name}</a>`)
+                    variationContainer.append(button);
+                    button.on("pointerdown", async () => {
+
+                        const videoDimension = Math.max(statefulVideo.video.videoWidth, statefulVideo.video.videoHeight);
+                        const placeableDimension = Math.max(placeableDocument.width, placeableDocument.height);
+                        const currentRatio = placeableDimension / videoDimension;
+
+                        const { width, height } = await getVideoDimensions(variation);
+
+                        await placeableDocument.update({
+                            "texture.src": variation,
+                            "width": width * currentRatio,
+                            "height": height * currentRatio
+                        });
+                        
+                        const hud = placeable instanceof Token
+                            ? canvas.tokens.hud
+                            : canvas.tiles.hud;
+                        placeable.control();
+                        hud.bind(placeable);
                     });
-                    const hud = placeable instanceof Token
-                        ? canvas.tokens.hud
-                        : canvas.tiles.hud;
-                    placeable.control();
-                    hud.bind(placeable);
-                });
+                }
             }
 
-            for (const colorConfig of colorVariations) {
-                const { colorName, color, tooltip, filePath } = colorConfig;
-                const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
-                if (!colorName) {
-                    colorContainer.prepend(button);
-                } else {
-                    colorContainer.append(button);
-                }
-                button.on("pointerdown", async () => {
-                    selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
-                    selectColorButton.trigger("pointerdown");
-                    await placeableDocument.update({
-                        "texture.src": filePath
+            if (colorVariations.length > 1) {
+                for (const colorConfig of colorVariations) {
+                    const { colorName, color, tooltip, filePath } = colorConfig;
+                    const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
+                    if (!colorName) {
+                        colorContainer.prepend(button);
+                    } else {
+                        colorContainer.append(button);
+                    }
+                    button.on("pointerdown", async () => {
+                        selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
+                        selectColorButton.trigger("pointerdown");
+                        await placeableDocument.update({
+                            "texture.src": filePath
+                        });
+                        const hud = placeable instanceof Token
+                            ? canvas.tokens.hud
+                            : canvas.tiles.hud;
+                        placeable.control();
+                        hud.bind(placeable);
                     });
-                    const hud = placeable instanceof Token
-                        ? canvas.tokens.hud
-                        : canvas.tiles.hud;
-                    placeable.control();
-                    hud.bind(placeable);
-                });
+                }
             }
         });
 

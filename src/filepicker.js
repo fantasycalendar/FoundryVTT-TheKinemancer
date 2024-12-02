@@ -62,6 +62,8 @@ class KinemancerFilePicker extends FilePicker {
                 return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
             }).map(path => {
                 return lib.determineFileColor(path);
+            }).sort((a, b) => {
+                return a.order - b.order;
             });
 
             // Find the internal variants
