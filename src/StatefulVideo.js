@@ -459,7 +459,6 @@ export class StatefulVideo {
     }
 
     play() {
-        if (!this.document.video.autoplay) return;
         return game.video.play(this.video);
     }
 
@@ -768,7 +767,7 @@ export class StatefulVideo {
         this.evaluateVisibility();
 
         this.still = false;
-        this.playing = options.playing && this.document.autoplay;
+        this.playing = options.playing;
         this.texture.update();
 
         switch (this.flags.currentState.behavior) {
@@ -829,7 +828,7 @@ export class StatefulVideo {
 
         if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent) {
             return {
-                playing: options.playing && this.document.autoplay, loop: true, offset: offsetStartTime / 1000
+                loop: true, offset: offsetStartTime / 1000
             };
         }
 
@@ -844,7 +843,7 @@ export class StatefulVideo {
         }, loopDuration - offsetLoopTime);
 
         return {
-            playing: options.playing && this.document.autoplay, loop: false, offset: offsetStartTime / 1000
+            playing: options.playing, loop: false, offset: offsetStartTime / 1000
         }
 
     }
@@ -883,7 +882,7 @@ export class StatefulVideo {
         this.ignoreDate = false;
 
         return {
-            playing: options.playing && this.document.autoplay, loop: false, offset: startTime / 1000
+            playing: options.playing, loop: false, offset: startTime / 1000
         }
 
     }
