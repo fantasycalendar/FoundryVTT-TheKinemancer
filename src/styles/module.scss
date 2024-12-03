@@ -16,6 +16,17 @@
     padding-bottom: 0.25rem;
   }
 
+  &-bottom-white-divider {
+    border-bottom: 1px solid white;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  &-top-divider {
+    padding-top: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
   &-action-button {
     text-align: center;
   }
@@ -55,9 +66,8 @@
       .ats-variations {
         display: flex;
         flex-direction: column;
-        border-bottom: 1px solid white;
-        padding: 0.25rem 0 0.5rem 0;
-        margin: 0 1rem 0.5rem 1rem;
+        padding: 0.25rem 0;
+        margin: 0 1rem;
         font-size: 1.75rem;
       }
 

@@ -399,16 +399,14 @@ export class StatefulVideo {
                 parentContainer.css("visibility", newState);
             });
 
-            const colorContainer = $(`<div class="ats-color-container"></div>`);
-            const variationContainer = $(`<div class="ats-variations"></div>`);
 
             selectContainer.append(selectButtonContainer);
             selectButtonContainer.append(selectColorButton);
             selectButtonContainer.append(parentContainer);
-            parentContainer.append(variationContainer);
-            parentContainer.append(colorContainer);
 
             if (internalVariations.length > 1) {
+                const variationContainer = $(`<div class="ats-variations ${colorVariations.length > 1 ? "ats-bottom-white-divider" : ""}"></div>`);
+                parentContainer.append(variationContainer);
                 for (const variation of internalVariations) {
                     const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
                     const button = $(`<a>${name}</a>`)
@@ -426,7 +424,7 @@ export class StatefulVideo {
                             "width": width * currentRatio,
                             "height": height * currentRatio
                         });
-                        
+
                         const hud = placeable instanceof Token
                             ? canvas.tokens.hud
                             : canvas.tiles.hud;
@@ -437,6 +435,8 @@ export class StatefulVideo {
             }
 
             if (colorVariations.length > 1) {
+                const colorContainer = $(`<div class="ats-color-container ${internalVariations.length > 1 ? "ats-top-divider" : ""}"></div>`);
+                parentContainer.append(colorContainer);
                 for (const colorConfig of colorVariations) {
                     const { colorName, color, tooltip, filePath } = colorConfig;
                     const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
@@ -1138,6 +1138,9 @@ class Flags {
             return filePath;
         }
         if (this.currentFile.includes("__")) {
+            return this.currentFile;
+        }
+        if (this.currentFile.includes("__") || this.currentFile.includes("_%5B") || this.currentFile.includes("_[")) {
             return this.currentFile;
         }
         return this.baseFile;
