@@ -20,7 +20,7 @@ export class StatefulVideo {
         this.flags = new Flags(this.document);
         this.offset = this.flags.offset;
         this.texture = texture;
-        this.video = this.texture.baseTexture.resource.source;
+        this.video = this.texture?.baseTexture?.resource?.source;
         this.timeout = null;
         this.still = false;
         this.playing = false;
@@ -31,6 +31,9 @@ export class StatefulVideo {
         this.newCurrentTime = null;
         this.randomTimers = {};
         this.ready = !!currentDelegator;
+        if (!this.video) {
+            this.waitUntilReady();
+        }
     }
 
     static setAllReady() {
@@ -200,6 +203,10 @@ export class StatefulVideo {
     }
 
     static createPlaceable(placeableDoc) {
+        const hasFlags = foundry.utils.getProperty(placeableDoc, CONSTANTS.STATES_FLAG)?.length;
+        if (hasFlags) {
+            return StatefulVideo.make(placeableDoc, placeableDoc.object.texture)
+        }
         if (!lib.isResponsibleGM()) return;
         const path = lib.getVideoJsonPath(placeableDoc);
         fetch(path)
@@ -481,10 +488,20 @@ export class StatefulVideo {
         return game.video.play(this.video);
     }
 
+    async waitUntilReady() {
+        while (!this.video) {
+            this.document.renderable = false;
+            if (this.document?.mesh) this.document.mesh.renderable = false;
+            this.updateVideo();
+            await lib.wait(10);
+        }
+        this.play();
+    }
+
     updateVideo() {
         if (!this.document.object) return;
         this.texture = this.document.object.texture;
-        this.video = this.document.object.texture.baseTexture.resource.source;
+        this.video = this.document.object?.texture?.baseTexture?.resource?.source;
     }
 
     updateHudScale() {
