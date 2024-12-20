@@ -331,7 +331,8 @@ export class StatefulVideo {
 
             for (const [index, state] of statefulVideo.flags.states.entries()) {
                 if (!state.icon) continue;
-                const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon);
+                const currentState = statefulVideo.flags.currentStateIndex === index;
+                const stateBtn = StatefulVideo.makeHudButton(state.name, state.icon, currentState ? "background-color: #048d6e;" : "");
                 stateBtn.on("pointerdown", () => {
                     statefulVideo.changeState({ state: index, fast: true });
                 });
@@ -406,7 +407,6 @@ export class StatefulVideo {
                 parentContainer.css("visibility", newState);
             });
 
-
             selectContainer.append(selectButtonContainer);
             selectButtonContainer.append(selectColorButton);
             selectButtonContainer.append(parentContainer);
@@ -414,9 +414,12 @@ export class StatefulVideo {
             if (internalVariations.length > 1) {
                 const variationContainer = $(`<div class="ats-variations ${colorVariations.length > 1 ? "ats-bottom-white-divider" : ""}"></div>`);
                 parentContainer.append(variationContainer);
+                const currentVariation = placeableDocument.texture.src.includes("_%5B")
+                    ? placeableDocument.texture.src.split("%5B")[1].split("%5D")[0]
+                    : "original";
                 for (const variation of internalVariations) {
                     const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
-                    const button = $(`<a>${name}</a>`)
+                    const button = $(`<a style="${currentVariation === name ? 'color: #048d6e;' : ''}">${name}</a>`)
                     variationContainer.append(button);
                     button.on("pointerdown", async () => {
 
