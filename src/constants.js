@@ -130,7 +130,7 @@ CONSTANTS.COLOR_CODE = {
 	"day": "background: url('modules/the-kinemancer/assets/color-day.svg');",
 	"spring": "background: url('modules/the-kinemancer/assets/color-spring.svg');",
 	"summer": "background: url('modules/the-kinemancer/assets/color-summer.svg');",
-	"autumn": "background: url('modules/the-kinemancer/assets/color-autumn.svg');",
+	"fall": "background: url('modules/the-kinemancer/assets/color-fall.svg');",
 	"winter": "background: url('modules/the-kinemancer/assets/color-winter.svg');",
 	"frozen": "background: url('modules/the-kinemancer/assets/color-winter.svg');",
 	"fireflies": "background: url('modules/the-kinemancer/assets/color-fireflies.svg');",
@@ -204,7 +204,7 @@ CONSTANTS.COLOR_NAME = {
 
 	"spring": "Spring",
 	"summer": "Summer",
-	"autumn": "Autumn",
+	"fall": "Autumn",
 	"winter": "Winter",
 
 	"light": "Light",
