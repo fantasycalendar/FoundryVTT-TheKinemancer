@@ -31,6 +31,7 @@ export class StatefulVideo {
 		this.newCurrentTime = null;
 		this.randomTimers = {};
 		this.ready = !!currentDelegator;
+		this.allColorVariations = {};
 		if (!this.video) {
 			this.waitUntilReady();
 		}
@@ -353,123 +354,150 @@ export class StatefulVideo {
 		const fileSearchQuery = lib.getCleanWebmPath(placeableDocument)
 			.replace(".webm", "*.webm")
 
-		const baseVariation = placeableDocument.texture.src.includes("_(")
-			? placeableDocument.texture.src.split("_(")[1].split(")")[0]
+		const cleanTexturePath = decodeURIComponent(placeableDocument.texture.src);
+
+		const baseVariation = cleanTexturePath.includes("_(")
+			? cleanTexturePath.split("_(")[1].split(")")[0]
 			: false;
 
-		const internalVariation = placeableDocument.texture.src.includes("_%5B")
-			? placeableDocument.texture.src.split("_%5B")[1].split("%5D")[0]
+		const internalVariation = cleanTexturePath.includes("_[")
+			? cleanTexturePath.split("_[")[1].split("]")[0]
 			: false;
 
-		const colorVariation = placeableDocument.texture.src.includes("__")
-			? placeableDocument.texture.src.split("__")[1].split(".")[0]
+		const colorVariation = cleanTexturePath.includes("__")
+			? cleanTexturePath.split("__")[1].split(".")[0]
 			: false;
 
-		await lib.getWildCardFiles(fileSearchQuery).then((results) => {
-
-			const nonThumbnails = results.filter(filePath => !filePath.includes("_thumb")).sort((a, b) => {
-				const a_value = (a.includes("_%5B")) + (a.includes("_(") * 10) + (a.includes("__") * 100);
-				const b_value = (b.includes("_%5B")) + (b.includes("_(") * 10) + (b.includes("__") * 100);
-				return a_value - b_value;
-			});
-
-			const internalVariations = nonThumbnails.filter(filePath => {
-				return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
-					(!baseVariation && !filePath.includes("_("))
-					||
-					(baseVariation && filePath.includes(`_(${baseVariation})`))
-				);
+		await lib.getWildCardFiles(fileSearchQuery)
+			.then((results) => {
+				return results.map(decodeURIComponent);
 			})
+			.then((results) => {
 
-			const colorVariations = Object.values(nonThumbnails.reduce((acc, filePath) => {
-				if (internalVariation && !filePath.includes(`_%5B${internalVariation}%5D`)) return acc;
-				const colorConfig = lib.determineFileColor(filePath);
-				if (!acc[colorConfig.colorName]) {
-					acc[colorConfig.colorName] = {
-						...colorConfig,
-						filePath
-					};
+				const nonThumbnails = results.filter(filePath => !filePath.includes("_thumb")).sort((a, b) => {
+					const a_value = (a.includes("_[")) + (a.includes("_(") * 10) + (a.includes("__") * 100);
+					const b_value = (b.includes("_[")) + (b.includes("_(") * 10) + (b.includes("__") * 100);
+					return a_value - b_value;
+				});
+
+				const internalVariations = nonThumbnails.filter(filePath => {
+					return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
+						(!baseVariation && !filePath.includes("_("))
+						||
+						(baseVariation && filePath.includes(`_(${baseVariation})`))
+					);
+				})
+
+				if (statefulVideo) {
+					statefulVideo.allColorVariations = nonThumbnails.reduce((acc, filePath) => {
+						const colorConfig = lib.determineFileColor(filePath);
+
+						const colorSpecificBaseVariation = filePath.includes("_(")
+							? filePath.split("_(")[1].split(")")[0]
+							: false;
+
+						if (colorSpecificBaseVariation) {
+							acc[colorSpecificBaseVariation] ??= []
+							acc[colorSpecificBaseVariation].push(colorConfig.colorName || 'original');
+						}
+						return acc;
+					}, {})
 				}
-				return acc;
-			}, {})).sort((a, b) => {
-				return a.order - b.order;
-			});
 
-			if (internalVariations.length <= 1 && colorVariations.length <= 1) return;
-
-			const parentContainer = $(`<div class="ats-variation-container"></div>`);
-
-			const width = internalVariations.length > 1 ? 300 : Math.min(204, colorVariations.length * 34);
-			parentContainer.css({ left: width * -0.4, width });
-
-			selectColorButton.on('pointerdown', () => {
-				const newState = parentContainer.css('visibility') === "hidden" ? "visible" : "hidden";
-				parentContainer.css("visibility", newState);
-			});
-
-			selectContainer.append(selectButtonContainer);
-			selectButtonContainer.append(selectColorButton);
-			selectButtonContainer.append(parentContainer);
-
-			if (internalVariations.length > 1) {
-				const variationContainer = $(`<div class="ats-variations ${colorVariations.length > 1 ? "ats-bottom-white-divider" : ""}"></div>`);
-				parentContainer.append(variationContainer);
-				const currentVariation = placeableDocument.texture.src.includes("_%5B")
-					? placeableDocument.texture.src.split("%5B")[1].split("%5D")[0]
-					: "original";
-				for (const variation of internalVariations) {
-					const name = variation.includes("_%5B") ? variation.split("%5B")[1].split("%5D")[0] : "original";
-					const button = $(`<a style="${currentVariation === name ? 'color: #048d6e;' : ''}">${name}</a>`)
-					variationContainer.append(button);
-					button.on("pointerdown", async () => {
-
-						const videoDimension = Math.max(statefulVideo.video.videoWidth, statefulVideo.video.videoHeight);
-						const placeableDimension = Math.max(placeableDocument.width, placeableDocument.height);
-						const currentRatio = placeableDimension / videoDimension;
-
-						const { width, height } = await getVideoDimensions(variation);
-
-						await placeableDocument.update({
-							"texture.src": variation,
-							"width": width * currentRatio,
-							"height": height * currentRatio
-						});
-
-						const hud = placeable instanceof Token
-							? canvas.tokens.hud
-							: canvas.tiles.hud;
-						placeable.control();
-						hud.bind(placeable);
-					});
-				}
-			}
-
-			if (colorVariations.length > 1) {
-				const colorContainer = $(`<div class="ats-color-container ${internalVariations.length > 1 ? "ats-top-divider" : ""}"></div>`);
-				parentContainer.append(colorContainer);
-				for (const colorConfig of colorVariations) {
-					const { colorName, color, tooltip, filePath } = colorConfig;
-					const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
-					if (!colorName) {
-						colorContainer.prepend(button);
-					} else {
-						colorContainer.append(button);
+				const colorVariations = Object.values(nonThumbnails.reduce((acc, filePath) => {
+					if (baseVariation && !filePath.includes(`_(${baseVariation})`)) return acc;
+					if (internalVariation && !filePath.includes(`_[${internalVariation}]`)) return acc;
+					const colorConfig = lib.determineFileColor(filePath);
+					if (!acc[colorConfig.colorName]) {
+						acc[colorConfig.colorName] = {
+							...colorConfig,
+							filePath
+						};
 					}
-					button.on("pointerdown", async () => {
-						selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
-						selectColorButton.trigger("pointerdown");
-						await placeableDocument.update({
-							"texture.src": filePath
+					return acc;
+				}, {})).sort((a, b) => {
+					return a.order - b.order;
+				});
+
+				if (internalVariations.length <= 1 && colorVariations.length <= 1) return;
+
+				const parentContainer = $(`<div class="ats-variation-container"></div>`);
+
+				const width = internalVariations.length > 1 ? 300 : Math.min(204, colorVariations.length * 34);
+				parentContainer.css({ left: width * -0.4, width });
+
+				selectColorButton.on('pointerdown', () => {
+					const newState = parentContainer.css('visibility') === "hidden" ? "visible" : "hidden";
+					parentContainer.css("visibility", newState);
+				});
+
+				selectContainer.append(selectButtonContainer);
+				selectButtonContainer.append(selectColorButton);
+				selectButtonContainer.append(parentContainer);
+
+				if (internalVariations.length > 1) {
+					const variationContainer = $(`<div class="ats-variations ${colorVariations.length > 1 ? "ats-bottom-white-divider" : ""}"></div>`);
+					parentContainer.append(variationContainer);
+
+					let currentVariation = cleanTexturePath.includes("_[")
+						? cleanTexturePath.split("[")[1].split("]")[0]
+						: "original";
+					currentVariation = currentVariation.replace("_", " ")
+
+					for (const variation of internalVariations) {
+						let name = variation.includes("_[") ? variation.split("[")[1].split("]")[0] : "original";
+						name = name.replace("_", " ")
+						const button = $(`<a style="${currentVariation === name ? 'color: #048d6e;' : ''}">${name}</a>`)
+						variationContainer.append(button);
+						button.on("pointerdown", async () => {
+
+							const videoDimension = Math.max(statefulVideo.video.videoWidth, statefulVideo.video.videoHeight);
+							const placeableDimension = Math.max(placeableDocument.width, placeableDocument.height);
+							const currentRatio = placeableDimension / videoDimension;
+
+							const { width, height } = await getVideoDimensions(variation);
+
+							await placeableDocument.update({
+								"texture.src": variation,
+								"width": width * currentRatio,
+								"height": height * currentRatio
+							});
+
+							const hud = placeable instanceof Token
+								? canvas.tokens.hud
+								: canvas.tiles.hud;
+							placeable.control();
+							hud.bind(placeable);
 						});
-						const hud = placeable instanceof Token
-							? canvas.tokens.hud
-							: canvas.tiles.hud;
-						placeable.control();
-						hud.bind(placeable);
-					});
+					}
 				}
-			}
-		});
+
+				if (colorVariations.length > 1) {
+					const colorContainer = $(`<div class="ats-color-container ${internalVariations.length > 1 ? "ats-top-divider" : ""}"></div>`);
+					parentContainer.append(colorContainer);
+					for (const colorConfig of colorVariations) {
+						const { colorName, color, tooltip, filePath } = colorConfig;
+						const button = $(`<div class="ats-color-button" style="${color}" data-tooltip="${tooltip}"></div>`)
+						if (!colorName) {
+							colorContainer.prepend(button);
+						} else {
+							colorContainer.append(button);
+						}
+						button.on("pointerdown", async () => {
+							selectColorButton.html(`<div class="ats-color-button" style="${color}"></div>`);
+							selectColorButton.trigger("pointerdown");
+							await placeableDocument.update({
+								"texture.src": filePath
+							});
+							const hud = placeable instanceof Token
+								? canvas.tokens.hud
+								: canvas.tiles.hud;
+							placeable.control();
+							hud.bind(placeable);
+						});
+					}
+				}
+			});
 
 		if (statefulVideo || selectButtonContainer.children().length) {
 			root.append(selectContainer);
@@ -643,7 +671,7 @@ export class StatefulVideo {
 			[CONSTANTS.PREVIOUS_STATE_FLAG]: previousStateIndex,
 			[CONSTANTS.CURRENT_STATE_FLAG]: stateIndex,
 			[CONSTANTS.QUEUED_STATE_FLAG]: this.flags.determineNextStateIndex(stateIndex),
-			"texture.src": this.flags.determineFile(stateIndex)
+			"texture.src": this.flags.determineFile(stateIndex, this)
 		};
 		if (Hooks.call("ats.preUpdateCurrentState", this.document, this.flags.data, updates) === false) {
 			return;
@@ -945,7 +973,7 @@ class Flags {
 	}
 
 	get currentFile() {
-		return this.doc.texture.src;
+		return decodeURIComponent(this.doc.texture.src);
 	}
 
 	get baseFile() {
@@ -1142,8 +1170,7 @@ class Flags {
 
 	}
 
-	determineFile(stateIndex) {
-
+	determineFile(stateIndex, statefulVideo) {
 		const state = this.states[stateIndex];
 		if (this.useFiles && this.folderPath) {
 			let filePath = state.file
@@ -1151,20 +1178,23 @@ class Flags {
 				: this.baseFile;
 
 			if (this.currentFile.includes("__")) {
+				const baseVariation = filePath.includes("_(")
+					? filePath.split("_(")[1].split(")")[0]
+					: false;
 				const colorVariation = this.currentFile.split("__")[1].split(".")[0];
-				filePath = filePath.replace(".webm", `__${colorVariation}.webm`)
+				if (statefulVideo.allColorVariations[baseVariation].includes(colorVariation)) {
+					filePath = filePath.replace(".webm", `__${colorVariation}.webm`)
+				}
 			}
-
 			return filePath;
 		}
 		if (this.currentFile.includes("__")) {
 			return this.currentFile;
 		}
-		if (this.currentFile.includes("__") || this.currentFile.includes("_%5B") || this.currentFile.includes("_[")) {
+		if (this.currentFile.includes("__") || this.currentFile.includes("_[")) {
 			return this.currentFile;
 		}
 		return this.baseFile;
-
 	}
 
 }

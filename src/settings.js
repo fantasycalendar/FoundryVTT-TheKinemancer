@@ -22,7 +22,7 @@ class Settings extends TJSGameSettings {
 			Object.values(setting).deepFlatten().filter(Boolean)
 		);
 
-		values.sort((a, b) => {
+		return values.sort((a, b) => {
 			const offset = CONSTANTS.TIME_PERIODS_ORDER.includes(a) - CONSTANTS.TIME_PERIODS_ORDER.includes(b)
 			if (!offset) {
 				return CONSTANTS.TIME_PERIODS_ORDER.indexOf(a) - CONSTANTS.TIME_PERIODS_ORDER.indexOf(b)
