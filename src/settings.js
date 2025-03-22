@@ -1,6 +1,5 @@
 import { TJSGameSettings } from "#runtime/svelte/store/fvtt/settings";
 import CONSTANTS from "./constants.js";
-import { uniqueArrayElements } from "./lib/lib.js";
 import * as lib from "./lib/lib.js";
 
 class Settings extends TJSGameSettings {
@@ -23,7 +22,11 @@ class Settings extends TJSGameSettings {
 			Object.values(setting).deepFlatten().filter(Boolean)
 		);
 
-		return values.sort((a, b) => {
+		values.sort((a, b) => {
+			const offset = CONSTANTS.TIME_PERIODS_ORDER.includes(a) - CONSTANTS.TIME_PERIODS_ORDER.includes(b)
+			if (!offset) {
+				return CONSTANTS.TIME_PERIODS_ORDER.indexOf(a) - CONSTANTS.TIME_PERIODS_ORDER.indexOf(b)
+			}
 			return b > a ? -1 : 1;
 		});
 	}
