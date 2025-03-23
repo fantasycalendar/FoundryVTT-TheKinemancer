@@ -1,8 +1,8 @@
 import CONSTANTS from "./constants.js";
 import * as lib from "./lib/lib.js";
+import { getVideoDimensions } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 import { get, writable } from "svelte/store";
-import { getVideoDimensions } from "./lib/lib.js";
 
 const statefulVideoHudMap = new Map();
 const managedStatefulVideos = new Map();
@@ -32,6 +32,8 @@ export class StatefulVideo {
 		this.randomTimers = {};
 		this.ready = !!currentDelegator;
 		this.allColorVariations = {};
+		this.allVariationDurations = {};
+		this.preloadAssets();
 		if (!this.video) {
 			this.waitUntilReady();
 		}
@@ -269,6 +271,9 @@ export class StatefulVideo {
 	}
 
 	get duration() {
+		if (this.allVariationDurations[this.document.texture.src]) {
+			return Math.max(0, this.allVariationDurations[this.document.texture.src] - this.flags.singleFrameDuration);
+		}
 		return Math.max(0, (this.video.duration * 1000) - this.flags.singleFrameDuration);
 	}
 
@@ -389,17 +394,33 @@ export class StatefulVideo {
 				})
 
 				if (statefulVideo) {
+					statefulVideo.allInternalVariations = nonThumbnails.reduce((acc, filePath) => {
+
+						const specificBaseVariation = filePath.includes("_(")
+							? filePath.split("_(")[1].split(")")[0]
+							: "base";
+
+						const specificInternalVariation = filePath.includes("_[")
+							? filePath.split("_[")[1].split("]")[0]
+							: false;
+
+						if (specificInternalVariation) {
+							acc[specificBaseVariation] ??= new Set()
+							acc[specificBaseVariation].add(specificInternalVariation);
+						}
+
+						return acc;
+					}, {})
+
 					statefulVideo.allColorVariations = nonThumbnails.reduce((acc, filePath) => {
 						const colorConfig = lib.determineFileColor(filePath);
 
 						const colorSpecificBaseVariation = filePath.includes("_(")
 							? filePath.split("_(")[1].split(")")[0]
-							: false;
+							: "base";
 
-						if (colorSpecificBaseVariation) {
-							acc[colorSpecificBaseVariation] ??= []
-							acc[colorSpecificBaseVariation].push(colorConfig.colorName || 'original');
-						}
+						acc[colorSpecificBaseVariation] ??= new Set()
+						acc[colorSpecificBaseVariation].add(colorConfig.colorName || 'original');
 						return acc;
 					}, {})
 				}
@@ -449,6 +470,7 @@ export class StatefulVideo {
 						name = name.replace("_", " ")
 						const button = $(`<a style="${currentVariation === name ? 'color: #048d6e;' : ''}">${name}</a>`)
 						variationContainer.append(button);
+
 						button.on("pointerdown", async () => {
 
 							const videoDimension = Math.max(statefulVideo.video.videoWidth, statefulVideo.video.videoHeight);
@@ -515,6 +537,20 @@ export class StatefulVideo {
 
 	}
 
+	preloadAssets() {
+		if (!this.flags.useFiles) return;
+		const textures = this.flags.states.map(state => {
+			return state.file
+				? this.flags.folderPath + "/" + state.file
+				: this.flags.baseFile;
+		});
+		for (let path of textures) {
+			TextureLoader.loader.loadTexture(path).then(texture => {
+				this.allVariationDurations[path] = texture.resource.source.duration * 1000;
+			});
+		}
+	}
+
 	play() {
 		return game.video.play(this.video);
 	}
@@ -554,22 +590,32 @@ export class StatefulVideo {
 	static onPreUpdate(placeableDoc, changes) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
 		const diff = foundry.utils.diffObject(placeableDoc, changes);
-		if (foundry.utils.hasProperty(diff, "texture.src") && statefulVideo) {
+		if (foundry.utils.hasProperty(diff, "texture.src") && !foundry.utils.hasProperty(diff, CONSTANTS.CURRENT_STATE_FLAG) && statefulVideo) {
 			statefulVideo.newCurrentTime = statefulVideo.video.currentTime * 1000;
 		}
+		placeableDoc.updateSource({
+			"flags.core.randomizeVideo": false
+		});
+	}
+
+	refreshVideo() {
+		this.texture = this.texture;
+		this.video = this.texture.baseTexture.resource.source;
+		this.still = false;
+		this.playing = false;
+		clearTimeout(this.timeout);
 	}
 
 	static onUpdate(placeableDoc, changes, firstUpdate = false) {
 		let statefulVideo = StatefulVideo.get(placeableDoc.uuid);
 		if (foundry.utils.hasProperty(changes, "texture.src") && statefulVideo) {
-			setTimeout(() => {
-				statefulVideo.texture = placeableDoc.object.texture;
-				statefulVideo.video = placeableDoc.object.texture.baseTexture.resource.source;
-				statefulVideo.still = false;
-				statefulVideo.playing = false;
-				clearTimeout(statefulVideo.timeout);
-				statefulVideo.play();
-			}, 100);
+			if (placeableDoc.object.texture.valid) {
+				statefulVideo.refreshVideo();
+			} else {
+				placeableDoc.object.texture.on("update", () => {
+					statefulVideo.refreshVideo();
+				})
+			}
 		}
 		if (!foundry.utils.hasProperty(changes, CONSTANTS.FLAGS)) return;
 		if (!statefulVideo) {
@@ -591,7 +637,6 @@ export class StatefulVideo {
 			statefulVideo.clearRandomTimers();
 			statefulVideo.setupRandomTimers();
 			clearTimeout(statefulVideo.timeout);
-			statefulVideo.play();
 			statefulVideo.flags.data.queuedState = statefulVideo.flags.determineNextStateIndex();
 			return placeableDoc.update({
 				[CONSTANTS.CURRENT_STATE_FLAG]: statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.RANDOM_STATE
@@ -611,7 +656,9 @@ export class StatefulVideo {
 			}
 			statefulVideo.still = false;
 			statefulVideo.playing = false;
-			statefulVideo.play();
+		}
+		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) && statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
+			statefulVideo.play()
 		}
 	}
 
@@ -875,7 +922,7 @@ export class StatefulVideo {
 		await this.video.play();
 		this.video.loop = false;
 		this.video.currentTime = (startTime ?? 0) / 1000;
-		this.video.pause()
+		this.video.pause();
 
 		return false;
 	}
@@ -893,7 +940,9 @@ export class StatefulVideo {
 		const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
 		const offsetStartTime = (startTime + offsetLoopTime);
 
-		if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent) {
+		const noRandomTimers = foundry.utils.isEmpty(this.randomTimers);
+
+		if (startTime === 0 && loopDuration === this.duration && !this.flags.queuedStateIndexIsDifferent && noRandomTimers) {
 			return {
 				loop: true, offset: offsetStartTime / 1000
 			};
@@ -1118,15 +1167,9 @@ class Flags {
 
 		const state = this.states[stateIndex];
 
-		const nextStates = this.states.filter(s => {
+		return this.states.filter(s => {
 			return s.behavior === CONSTANTS.BEHAVIORS.RANDOM || (s.behavior === CONSTANTS.BEHAVIORS.RANDOM_IF && s.randomState === state.id);
 		}).map(s => this.states.indexOf(s));
-
-		if (nextStates.length) {
-			return nextStates;
-		}
-
-		return [Math.max(0, Math.min(stateIndex, this.states.length - 1))];
 
 	}
 
@@ -1162,7 +1205,9 @@ class Flags {
 
 			case CONSTANTS.BEHAVIORS.RANDOM_STATE:
 				const nextStates = state.randomState.map(id => this.states.findIndex(s => s.id === id)).filter(i => i > -1);
-				nextStates.splice(nextStates.indexOf(this.previousStateIndex), 1);
+				if (nextStates.indexOf(this.previousStateIndex) > -1) {
+					nextStates.splice(nextStates.indexOf(this.previousStateIndex), 1);
+				}
 				return nextStates.length ? lib.randomArrayElement(nextStates) : defaultIndex;
 		}
 
@@ -1177,19 +1222,29 @@ class Flags {
 				? this.folderPath + "/" + state.file
 				: this.baseFile;
 
+			const baseVariation = filePath.includes("_(")
+				? filePath.split("_(")[1].split(")")[0]
+				: "base";
+
+			if (this.currentFile.includes("_[")) {
+				const internalVariation = this.currentFile.split("_[")[1].split("]")[0];
+				if (statefulVideo.allInternalVariations[baseVariation].has(internalVariation)) {
+					if (baseVariation === "base") {
+						filePath = filePath.replace(`.webm`, `_[${internalVariation}].webm`);
+					} else {
+						filePath = filePath.replace(`_(${baseVariation})`, `_[${internalVariation}]_(${baseVariation})`);
+					}
+				}
+			}
+
 			if (this.currentFile.includes("__")) {
-				const baseVariation = filePath.includes("_(")
-					? filePath.split("_(")[1].split(")")[0]
-					: false;
 				const colorVariation = this.currentFile.split("__")[1].split(".")[0];
-				if (statefulVideo.allColorVariations[baseVariation].includes(colorVariation)) {
+				if (statefulVideo.allColorVariations[baseVariation].has(colorVariation)) {
 					filePath = filePath.replace(".webm", `__${colorVariation}.webm`)
 				}
 			}
+
 			return filePath;
-		}
-		if (this.currentFile.includes("__")) {
-			return this.currentFile;
 		}
 		if (this.currentFile.includes("__") || this.currentFile.includes("_[")) {
 			return this.currentFile;

@@ -197,39 +197,39 @@ export function validateStates(states) {
 
 
 export function determineFileColor(inFile) {
-
 	const lowerCaseFile = decodeURIComponent(inFile.toLowerCase());
 
-	for (const [colorName, color] of Object.entries(CONSTANTS.COLOR_CODE)) {
-		if (lowerCaseFile.endsWith(`__${colorName}.webm`)) {
+	if (lowerCaseFile.includes("__")) {
+
+		const fileColorName = lowerCaseFile
+			.split("__")[1]
+			.split(".")[0]
+			.replace("_", " ");
+
+		if (CONSTANTS.COLOR_CODE[fileColorName]) {
 			return {
-				colorName,
-				color,
-				tooltip: CONSTANTS.COLOR_NAME[colorName],
-				order: CONSTANTS.COLOR_ORDER.indexOf(colorName)
+				colorName: fileColorName,
+				color: CONSTANTS.COLOR_CODE[fileColorName],
+				tooltip: CONSTANTS.COLOR_NAME[fileColorName],
+				order: CONSTANTS.COLOR_ORDER.indexOf(fileColorName)
 			};
 		}
-	}
 
-	if (lowerCaseFile.includes("__")) {
-		const colorName = lowerCaseFile.split("__")[1].split(".")[0];
 		return {
-			colorName: colorName,
+			colorName: fileColorName,
 			color: CONSTANTS.COLOR_CODE["other"],
-			tooltip: colorName,
-			order: CONSTANTS.COLOR_ORDER.indexOf(colorName)
+			tooltip: fileColorName,
+			order: CONSTANTS.COLOR_ORDER.indexOf(fileColorName)
 		}
 	}
 
 	const colorName = "none";
-
 	return {
 		colorName: false,
 		color: CONSTANTS.COLOR_CODE[colorName],
 		tooltip: CONSTANTS.COLOR_NAME[colorName],
 		order: CONSTANTS.COLOR_ORDER.indexOf(colorName)
 	};
-
 }
 
 

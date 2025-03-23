@@ -204,7 +204,7 @@ CONSTANTS.COLOR_NAME = {
 
 	"spring": "Spring",
 	"summer": "Summer",
-	"fall": "Autumn",
+	"fall": "Fall",
 	"winter": "Winter",
 
 	"light": "Light",
