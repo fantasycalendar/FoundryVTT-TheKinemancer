@@ -308,7 +308,7 @@ function filePickerHandler(filePicker, html) {
 		const height = img.attr('height');
 
 		const webmPath = filePicker.filesWithWebmThumbnails[path] || path;
-		const title = webmPath.split("/").pop().replace("_", " ").replace(".webm", "").replace("thumb", "");
+		const title = webmPath.split("/").pop().replaceAll("_", " ").replace(".webm", "").replace("thumb", "").trim();
 
 		const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}" title="${title}"></video>`);
 		video.hide();
