@@ -131,10 +131,8 @@ class KinemancerFilePicker extends FilePicker {
 
 		}
 
-		if (this.deepSearch || this.filtersActive) {
-			for (const subDir of results.dirs) {
-				await this.searchDir(subDir, data);
-			}
+		for (const subDir of results.dirs) {
+			await this.searchDir(subDir, data);
 		}
 
 		return !!packFiles.length;
@@ -291,6 +289,12 @@ class KinemancerFilePicker extends FilePicker {
 }
 
 function filePickerHandler(filePicker, html) {
+	const location = html.find('input[name="target"]').val();
+
+	if (!location.startsWith(CONSTANTS.MODULE_NAME)) return;
+
+	html.find(".directory.files-list").css("order", "1");
+	html.find(".directory.folders-list").css("order", "2");
 
 	html.find('ol:not(.details-list) li img').each((idx, imgElem) => {
 
@@ -298,7 +302,7 @@ function filePickerHandler(filePicker, html) {
 		const parent = img.closest('[data-path]');
 		const path = parent.data('path');
 
-		if (!path.startsWith(CONSTANTS.MODULE_NAME) || !path.endsWith(".webm")) return;
+		if (!path.endsWith(".webm")) return;
 
 		const width = img.attr('width');
 		const height = img.attr('height');
