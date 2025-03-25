@@ -363,15 +363,15 @@ export class StatefulVideo {
 
 		const baseVariation = cleanTexturePath.includes("_(")
 			? cleanTexturePath.split("_(")[1].split(")")[0]
-			: false;
+			: "base";
 
 		const internalVariation = cleanTexturePath.includes("_[")
 			? cleanTexturePath.split("_[")[1].split("]")[0]
-			: false;
+			: "base";
 
 		const colorVariation = cleanTexturePath.includes("__")
 			? cleanTexturePath.split("__")[1].split(".")[0]
-			: false;
+			: "base";
 
 		await lib.getWildCardFiles(fileSearchQuery)
 			.then((results) => {
@@ -385,13 +385,23 @@ export class StatefulVideo {
 					return a_value - b_value;
 				});
 
-				const internalVariations = nonThumbnails.filter(filePath => {
-					return (!colorVariation && !filePath.includes("__") || (colorVariation && filePath.includes(`__${colorVariation}`))) && (
-						(!baseVariation && !filePath.includes("_("))
-						||
-						(baseVariation && filePath.includes(`_(${baseVariation})`))
-					);
-				})
+				const internalVariations = Object.values(nonThumbnails.reduce((acc, filePath) => {
+					const specificInternalVariation = filePath.includes("_[")
+						? filePath.split("_[")[1].split("]")[0].replace("_", " ").trim()
+						: "base";
+					const specificBaseVariation = filePath.includes("_(")
+						? filePath.split("_(")[1].split(")")[0]
+						: "base";
+					const specificColorVariation = filePath.includes("__")
+						? filePath.split("__")[1].split(".")[0]
+						: "base";
+
+					acc[specificInternalVariation] ??= filePath;
+					if (baseVariation === specificBaseVariation && colorVariation === specificColorVariation) {
+						acc[specificInternalVariation] = filePath;
+					}
+					return acc;
+				}, {}));
 
 				if (statefulVideo) {
 					statefulVideo.allInternalVariations = nonThumbnails.reduce((acc, filePath) => {
@@ -426,8 +436,18 @@ export class StatefulVideo {
 				}
 
 				const colorVariations = Object.values(nonThumbnails.reduce((acc, filePath) => {
-					if (baseVariation && !filePath.includes(`_(${baseVariation})`)) return acc;
-					if (internalVariation && !filePath.includes(`_[${internalVariation}]`)) return acc;
+					const colorSpecificBaseVariation = filePath.includes("_(")
+						? filePath.split("_(")[1].split(")")[0]
+						: "base";
+					if (baseVariation !== colorSpecificBaseVariation) {
+						return acc;
+					}
+					const colorSpecificInternalVariation = filePath.includes("_[")
+						? filePath.split("_[")[1].split("]")[0]
+						: "base";
+					if (internalVariation !== colorSpecificInternalVariation) {
+						return acc;
+					}
 					const colorConfig = lib.determineFileColor(filePath);
 					if (!acc[colorConfig.colorName]) {
 						acc[colorConfig.colorName] = {
