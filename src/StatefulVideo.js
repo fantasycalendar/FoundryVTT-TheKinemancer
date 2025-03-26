@@ -676,8 +676,10 @@ export class StatefulVideo {
 			}
 			statefulVideo.still = false;
 			statefulVideo.playing = false;
-		}
-		if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) && statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
+			if (!foundry.utils.hasProperty(changes, "texture.src")) {
+				statefulVideo.play()
+			}
+		} else if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) && statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
 			statefulVideo.play()
 		}
 	}
