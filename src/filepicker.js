@@ -1,7 +1,7 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
-import { uniqueArrayElements } from "./lib/lib.js";
+import { getFolder, uniqueArrayElements, updateFilters } from "./lib/lib.js";
 
 
 export default function registerFilePicker() {
@@ -22,6 +22,34 @@ class KinemancerFilePicker extends FilePicker {
 	filtersActive = false;
 	tags = {};
 	filters = {};
+
+	async refreshTags() {
+		const tags = {
+			[GameSettings.SETTINGS.ASSET_TYPES]: {},
+			[GameSettings.SETTINGS.TIME_PERIODS]: {},
+			[GameSettings.SETTINGS.CATEGORIES]: {},
+			[GameSettings.SETTINGS.TAGS]: {}
+		};
+		for (const [filePath, data] of Object.entries(this.webmsWithJsonData)) {
+			const dirPath = lib.getFolder(filePath);
+			if (foundry.utils.getProperty(data, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
+				tags[GameSettings.SETTINGS.ASSET_TYPES][dirPath] = foundry.utils.getProperty(data, CONSTANTS.ASSET_TYPES_FLAG);
+			}
+			if (foundry.utils.getProperty(data, CONSTANTS.TIME_PERIODS_FLAG)?.length) {
+				tags[GameSettings.SETTINGS.TIME_PERIODS][dirPath] = foundry.utils.getProperty(data, CONSTANTS.TIME_PERIODS_FLAG);
+			}
+			if (foundry.utils.getProperty(data, CONSTANTS.CATEGORIES_FLAG)?.length) {
+				tags[GameSettings.SETTINGS.CATEGORIES][dirPath] = foundry.utils.getProperty(data, CONSTANTS.CATEGORIES_FLAG);
+			}
+			if (foundry.utils.getProperty(data, CONSTANTS.TAGS_FLAG)?.length) {
+				tags[GameSettings.SETTINGS.TAGS][dirPath] = foundry.utils.getProperty(data, CONSTANTS.TAGS_FLAG);
+			}
+		}
+		for (const [settingsKey, values] of Object.entries(tags)) {
+			await lib.updateFilters(settingsKey, values, true)
+		}
+		return this._render(false);
+	}
 
 	dirMatchesFilter(dir) {
 		return Object.entries(this.filters).every(([settingsKey, filters]) => {
@@ -105,7 +133,7 @@ class KinemancerFilePicker extends FilePicker {
 			});
 
 			if (jsonPath) {
-				this.webmsWithJsonData[file] = await fetch(jsonPath)
+				this.webmsWithJsonData[file] ??= await fetch(jsonPath)
 					.then(response => response.json())
 					.then((result) => {
 						const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
@@ -295,6 +323,16 @@ function filePickerHandler(filePicker, html) {
 
 	html.find(".directory.files-list").css("order", "1");
 	html.find(".directory.folders-list").css("order", "2");
+
+	const header = html.parent().parent().find(".window-header");
+	if (game.user.isGM && game.modules.get("the-kinemancer-creator")?.active && !header.find(".refresh-tags").length) {
+		const refreshTagsButton = $("<a class='header-button control refresh-tags'><i class='fas fa-refresh'></i> Tags</a>")
+		refreshTagsButton.insertBefore(header.find(".close"))
+
+		refreshTagsButton.on("click", function () {
+			filePicker.refreshTags();
+		})
+	}
 
 	html.find('ol:not(.details-list) li img').each((idx, imgElem) => {
 

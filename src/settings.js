@@ -22,10 +22,17 @@ class Settings extends TJSGameSettings {
 			Object.values(setting).deepFlatten().filter(Boolean)
 		);
 
+		const order = CONSTANTS.TAG_ORDER?.[settingsKey] ?? false;
+
 		return values.sort((a, b) => {
-			const offset = CONSTANTS.TIME_PERIODS_ORDER.includes(a) - CONSTANTS.TIME_PERIODS_ORDER.includes(b)
-			if (!offset) {
-				return CONSTANTS.TIME_PERIODS_ORDER.indexOf(a) - CONSTANTS.TIME_PERIODS_ORDER.indexOf(b)
+			if (order) {
+				const aOffset = order.indexOf(a);
+				const bOffset = order.indexOf(b);
+				if (aOffset > -1 && bOffset > -1) {
+					return aOffset - bOffset;
+				} else if (aOffset > -1 || bOffset > -1) {
+					return aOffset > -1 ? -1 : 1;
+				}
 			}
 			return b > a ? -1 : 1;
 		});

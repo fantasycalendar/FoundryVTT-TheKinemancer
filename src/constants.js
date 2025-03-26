@@ -261,8 +261,13 @@ CONSTANTS.COLOR_NAME = {
 
 CONSTANTS.COLOR_ORDER = Object.keys(CONSTANTS.COLOR_NAME)
 
-CONSTANTS.TIME_PERIODS_ORDER = [
-	"all", "medieval", "modern", "contemporary", "futuristic"
-]
+CONSTANTS.TAG_ORDER = {
+	[CONSTANTS.FLAG_KEYS.TIME_PERIODS]: [
+		"all", "medieval", "modern", "contemporary", "futuristic"
+	],
+	[CONSTANTS.FLAG_KEYS.ASSET_TYPES]: [
+		"front-view", "top-view"
+	]
+}
 
 export default CONSTANTS;

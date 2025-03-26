@@ -264,8 +264,8 @@ export function createJsonFile(placeableDocument, inData) {
 }
 
 
-export function updateFilters(settingsKey, values) {
-	const newTags = game.settings.get(CONSTANTS.MODULE_NAME, settingsKey);
+export function updateFilters(settingsKey, values, remove = false) {
+	const newTags = !remove ? game.settings.get(CONSTANTS.MODULE_NAME, settingsKey) : {};
 	for (const [path, tags] of Object.entries(values)) {
 		if (tags.length) {
 			newTags[path] = tags;
