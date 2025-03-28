@@ -111,12 +111,14 @@ function registerLibwrappers() {
 		return wrapped(event);
 	}, "MIXED");
 
-	libWrapper.register(CONSTANTS.MODULE_NAME, 'Tile.prototype._refreshVideo', function (wrapped) {
-		const statefulVideo = StatefulVideo.get(this.document.uuid);
-		if (!statefulVideo) {
-			return wrapped();
-		}
-	}, "MIXED");
+	if (Tile.prototype._refreshVideo) {
+		libWrapper.register(CONSTANTS.MODULE_NAME, 'Tile.prototype._refreshVideo', function (wrapped) {
+			const statefulVideo = StatefulVideo.get(this.document.uuid);
+			if (!statefulVideo) {
+				return wrapped();
+			}
+		}, "MIXED");
+	}
 
 }
 

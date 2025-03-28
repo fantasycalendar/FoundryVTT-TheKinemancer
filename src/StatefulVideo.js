@@ -215,13 +215,14 @@ export class StatefulVideo {
 		fetch(path)
 			.then(response => response.json())
 			.then((result) => {
-				const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
-				result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
-				const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
-				if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
-					result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+				const jsonData = foundry.utils.mergeObject(result, {});
+				const states = foundry.utils.getProperty(jsonData, CONSTANTS.STATES_FLAG);
+				jsonData[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+				const currentState = states[jsonData[CONSTANTS.CURRENT_STATE_FLAG]];
+				if (jsonData[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+					jsonData["texture.src"] = jsonData[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
 				}
-				placeableDoc.update(result);
+				placeableDoc.update(jsonData);
 			})
 			.catch(err => {
 			});

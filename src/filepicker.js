@@ -136,6 +136,7 @@ class KinemancerFilePicker extends FilePicker {
 				this.webmsWithJsonData[file] ??= await fetch(jsonPath)
 					.then(response => response.json())
 					.then((result) => {
+						result = foundry.utils.mergeObject(result, {});
 						const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
 						result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
 						const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
@@ -145,6 +146,7 @@ class KinemancerFilePicker extends FilePicker {
 						return result
 					})
 					.catch(err => {
+						console.log(err);
 					});
 			}
 

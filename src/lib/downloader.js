@@ -106,17 +106,18 @@ class Downloader {
 							} catch (err) {
 								throw new Error(`Could not load JSON file for this pack! Please contact The Kinemancer for support | ${err}`)
 							}
-							if (foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
-								tags[GameSettings.SETTINGS.ASSET_TYPES][path] = foundry.utils.getProperty(jsonData, CONSTANTS.ASSET_TYPES_FLAG);
+							let result = foundry.utils.mergeObject(jsonData, {});
+							if (foundry.utils.getProperty(result, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.ASSET_TYPES][path] = foundry.utils.getProperty(result, CONSTANTS.ASSET_TYPES_FLAG);
 							}
-							if (foundry.utils.getProperty(jsonData, CONSTANTS.TIME_PERIODS_FLAG)?.length) {
-								tags[GameSettings.SETTINGS.TIME_PERIODS][path] = foundry.utils.getProperty(jsonData, CONSTANTS.TIME_PERIODS_FLAG);
+							if (foundry.utils.getProperty(result, CONSTANTS.TIME_PERIODS_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.TIME_PERIODS][path] = foundry.utils.getProperty(result, CONSTANTS.TIME_PERIODS_FLAG);
 							}
-							if (foundry.utils.getProperty(jsonData, CONSTANTS.CATEGORIES_FLAG)?.length) {
-								tags[GameSettings.SETTINGS.CATEGORIES][path] = foundry.utils.getProperty(jsonData, CONSTANTS.CATEGORIES_FLAG);
+							if (foundry.utils.getProperty(result, CONSTANTS.CATEGORIES_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.CATEGORIES][path] = foundry.utils.getProperty(result, CONSTANTS.CATEGORIES_FLAG);
 							}
-							if (foundry.utils.getProperty(jsonData, CONSTANTS.TAGS_FLAG)?.length) {
-								tags[GameSettings.SETTINGS.TAGS][path] = foundry.utils.getProperty(jsonData, CONSTANTS.TAGS_FLAG);
+							if (foundry.utils.getProperty(result, CONSTANTS.TAGS_FLAG)?.length) {
+								tags[GameSettings.SETTINGS.TAGS][path] = foundry.utils.getProperty(result, CONSTANTS.TAGS_FLAG);
 							}
 						}
 						const fileData = zip.file(zipFile.name);
