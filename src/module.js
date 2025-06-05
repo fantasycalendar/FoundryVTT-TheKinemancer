@@ -28,14 +28,6 @@ Hooks.once('init', async function () {
 
 });
 
-Hooks.on("changeSidebarTab", (app) => {
-	const button = $("<button><i class='fas icon-thekinemancer_icon_logo'></i> The Kinemancer Downloader</button>");
-	button.on("click", () => {
-		DownloaderApp.show();
-	});
-	app.element.find("#settings-game").append(button)
-});
-
 Hooks.once('ready', async function () {
 
 	setTimeout(() => {

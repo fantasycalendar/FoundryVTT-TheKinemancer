@@ -1,6 +1,7 @@
 import { TJSGameSettings } from "#runtime/svelte/store/fvtt/settings";
 import CONSTANTS from "./constants.js";
 import * as lib from "./lib/lib.js";
+import DownloaderApp from "./applications/downloader/downloader-app.js";
 
 class Settings extends TJSGameSettings {
 
@@ -39,6 +40,53 @@ class Settings extends TJSGameSettings {
 	}
 
 	initialize() {
+
+		game.settings.registerMenu(CONSTANTS.MODULE_NAME, "downloader", {
+			name: "Asset Pack Manager",
+			label: "Install Asset Pack",
+			hint: "To add a new asset pack, copy the Pack link, click on the button above and paste it.",
+			icon: "",
+			type: DownloaderApp.shim,
+			restricted: true
+		});
+
+		game.settings.registerMenu(CONSTANTS.MODULE_NAME, "website", {
+			name: "My website",
+			label: "Get New Assets",
+			hint: "Find front-view and top-view assets.",
+			icon: "",
+			type: KinemancerWebsite,
+			restricted: true
+		});
+
+		game.settings.registerMenu(CONSTANTS.MODULE_NAME, "faq", {
+			name: "Need help?",
+			label: "FAQ",
+			hint: "Find help with installations, updates, technical specs…",
+			icon: "",
+			type: FAQ,
+			restricted: true
+		});
+
+		game.settings.registerMenu(CONSTANTS.MODULE_NAME, "discord", {
+			name: "Stay tuned!",
+			label: "Join the Discord",
+			hint: "Vote for the next creations, submit your ideas, get some freebies!",
+			icon: "",
+			type: Discord,
+			restricted: true
+		});
+
+		this.register({
+			namespace: CONSTANTS.MODULE_NAME,
+			key: "",
+			options: {
+				scope: "world",
+				config: false,
+				default: {},
+				type: Object
+			}
+		});
 
 		this.register({
 			namespace: CONSTANTS.MODULE_NAME,
@@ -97,6 +145,47 @@ class Settings extends TJSGameSettings {
 		});
 	}
 }
+
+
+class URLShim extends FormApplication {
+	/**
+	 * @inheritDoc
+	 */
+	constructor() {
+		super({});
+		window.open(this.urlToOpen, "_blank");
+	}
+
+	get urlToOpen() {
+		return "";
+	}
+
+	async _updateObject(event, formData) {
+	}
+
+	render() {
+		this.close();
+	}
+}
+
+class KinemancerWebsite extends URLShim {
+	get urlToOpen() {
+		return "https://www.thekinemancer.com";
+	}
+}
+
+class FAQ extends URLShim {
+	get urlToOpen() {
+		return "https://www.thekinemancer.com/faq/";
+	}
+}
+
+class Discord extends URLShim {
+	get urlToOpen() {
+		return "https://discord.gg/zhaYaj5ejg";
+	}
+}
+
 
 const GameSettings = new Settings();
 

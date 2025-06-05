@@ -32,4 +32,25 @@ export default class DownloaderApp extends SvelteApplication {
 			return new this(styles, options).render(true, { focus: true });
 		});
 	}
+
+	static get shim() {
+		return DownloaderAppShim;
+	}
+}
+
+class DownloaderAppShim extends FormApplication {
+	/**
+	 * @inheritDoc
+	 */
+	constructor() {
+		super({});
+		DownloaderApp.show();
+	}
+
+	async _updateObject(event, formData) {
+	}
+
+	render() {
+		this.close();
+	}
 }
