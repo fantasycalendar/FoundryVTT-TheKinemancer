@@ -52,7 +52,9 @@ export class StatefulVideo {
 
     static determineCurrentDelegator() {
 
-        if (delegateDebounce) delegateDebounce();
+        if (delegateDebounce) {
+            return delegateDebounce();
+        }
 
         delegateDebounce = foundry.utils.debounce(async () => {
 
@@ -85,6 +87,8 @@ export class StatefulVideo {
             StatefulVideo.setAllReady();
 
         }, 100);
+
+        delegateDebounce();
 
     }
 
@@ -506,7 +510,7 @@ export class StatefulVideo {
                                 "height": height * currentRatio
                             });
 
-                            const hud = placeable instanceof Token
+                            const hud = placeable instanceof foundry.canvas.placeables.Token
                                 ? canvas.tokens.hud
                                 : canvas.tiles.hud;
                             placeable.control();
@@ -532,7 +536,7 @@ export class StatefulVideo {
                             await placeableDocument.update({
                                 "texture.src": filePath
                             });
-                            const hud = placeable instanceof Token
+                            const hud = placeable instanceof foundry.canvas.placeables.Token
                                 ? canvas.tokens.hud
                                 : canvas.tiles.hud;
                             placeable.control();
@@ -553,7 +557,7 @@ export class StatefulVideo {
         Hooks.call(CONSTANTS.HOOKS.RENDER_UI, app, root, placeableDocument, statefulVideo);
 
         if (root.children().length) {
-            html.find(".col.middle").append(root);
+            $(html).find(".col.middle").append(root);
         }
 
     }
@@ -566,7 +570,7 @@ export class StatefulVideo {
                 : this.flags.baseFile;
         });
         for (let path of textures) {
-            TextureLoader.loader.loadTexture(path).then(texture => {
+            foundry.canvas.TextureLoader.loader.loadTexture(path).then(texture => {
                 this.allVariationDurations[path] = texture.resource.source.duration * 1000;
             });
         }

@@ -6,8 +6,8 @@
   "library": false,
   "compatibility": {
     "minimum": 10,
-    "verified": 12,
-    "maximum": 12
+    "verified": 13,
+    "maximum": 13
   },
   "authors": [
     {
@@ -20,10 +20,10 @@
     }
   ],
   "esmodules": [
-    "module.js"
+    "./dist/the-kinemancer.js"
   ],
   "styles": [
-    "style.css"
+    "./dist/the-kinemancer.css"
   ],
   "relationships": {
     "requires": [

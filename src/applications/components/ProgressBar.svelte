@@ -1,6 +1,6 @@
 <script>
 
-	import { applyStyles } from "#runtime/svelte/action/dom";
+  import { applyStyles } from '#runtime/svelte/action/dom/style';
 
 	export let progress;
 	export let text;

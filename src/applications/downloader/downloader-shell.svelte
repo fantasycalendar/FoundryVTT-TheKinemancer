@@ -1,54 +1,54 @@
 <script>
 
-	import { ApplicationShell } from "#runtime/svelte/component/core";
-	import ProgressBarStore from "../../lib/ProgressBarStore.js"
-	import ProgressBar from "../components/ProgressBar.svelte";
-	import Downloader from "../../lib/downloader.js";
-	import { writable } from "svelte/store";
-	import { uniqueArrayElements } from "../../lib/lib.js";
-	import * as lib from "../../lib/lib.js";
+    import { ApplicationShell } from "#runtime/svelte/component/application";
+    import ProgressBarStore from "../../lib/ProgressBarStore.js"
+    import ProgressBar from "../components/ProgressBar.svelte";
+    import Downloader from "../../lib/downloader.js";
+    import { writable } from "svelte/store";
+    import { uniqueArrayElements } from "../../lib/lib.js";
+    import * as lib from "../../lib/lib.js";
 
-	export let elementRoot;
+    export let elementRoot;
 
-	let step = 1;
+    let step = 1;
 
-	const url = writable("");
-	const downloadedPaths = writable([]);
+    const url = writable("");
+    const downloadedPaths = writable([]);
 
-	const downloading = Downloader.downloading;
-	const failed = Downloader.failed;
-	const totalSize = Downloader.totalSize;
+    const downloading = Downloader.downloading;
+    const failed = Downloader.failed;
+    const totalSize = Downloader.totalSize;
 
-	const progress = ProgressBarStore.percentStore;
-	const text = ProgressBarStore.textStore;
-	ProgressBarStore.text = "";
+    const progress = ProgressBarStore.percentStore;
+    const text = ProgressBarStore.textStore;
+    ProgressBarStore.text = "";
 
-	$: if ($downloading) step = 2;
+    $: if ($downloading) step = 2;
 
-	async function downloadPack() {
-		Downloader.downloadPack($url.trim())
-			.then(async (result) => {
-				if (result) {
-					step = 3;
-					downloadedPaths.set(lib.uniqueArrayElements(result.filesToCreate.map(file => file.path)));
-				}
-			});
-	}
+    async function downloadPack() {
+        Downloader.downloadPack($url.trim())
+            .then(async (result) => {
+                if (result) {
+                    step = 3;
+                    downloadedPaths.set(lib.uniqueArrayElements(result.filesToCreate.map(file => file.path)));
+                }
+            });
+    }
 
-	function reset() {
-		url.set("");
-		step = 1;
-	}
+    function reset() {
+        url.set("");
+        step = 1;
+    }
 
-	function openFile(path) {
-		const newPath = path.split("/");
-		newPath.pop();
-		new FilePicker({
-			type: "imagevideo",
-			current: newPath.join("/"),
-			displayMode: "tiles"
-		}).render(true);
-	}
+    function openFile(path) {
+        const newPath = path.split("/");
+        newPath.pop();
+        new foundry.applications.apps.FilePicker.implementation({
+            type: "imagevideo",
+            current: newPath.join("/"),
+            displayMode: "tiles"
+        }).render(true);
+    }
 
 </script>
 
@@ -194,6 +194,10 @@
 
   footer {
     display: flex;
+  }
+
+  button {
+    width: 100%;
   }
 
 </style>

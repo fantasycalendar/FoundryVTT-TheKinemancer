@@ -5,13 +5,13 @@ import GameSettings from "./settings.js";
 
 export default function registerFilePicker() {
 
-    Hooks.on('renderFilePicker', filePickerHandler);
+    CONFIG.ux.FilePicker = KinemancerFilePicker;
 
-    FilePicker = KinemancerFilePicker;
+    Hooks.on('renderFilePicker', filePickerHandler);
 
 }
 
-class KinemancerFilePicker extends FilePicker {
+class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implementation {
 
     filesWithColorVariants = {};
     filesWithInternalVariants = {};
@@ -21,6 +21,21 @@ class KinemancerFilePicker extends FilePicker {
     filtersActive = false;
     tags = {};
     filters = {};
+
+    static DEFAULT_OPTIONS = foundry.utils.mergeObject(foundry.applications.apps.FilePicker.DEFAULT_OPTIONS, {
+        actions: {
+            refreshTags: KinemancerFilePicker.refreshTags
+        }
+    })
+
+    _getHeaderControls() {
+        return super._getHeaderControls().concat([{
+            action: "refreshTags",
+            icon: "fa-solid fa-refresh",
+            label: "Refresh Tags",
+            visible: game.user.isGM
+        }]);
+    }
 
     async refreshTags() {
         const tags = {
@@ -62,10 +77,10 @@ class KinemancerFilePicker extends FilePicker {
 
     async searchDir(dir, data) {
 
-        const results = await FilePicker.browse("data", `${dir}/*`, { wildcard: true });
+        const results = await foundry.applications.apps.FilePicker.implementation.browse("data", `${dir}/*`, { wildcard: true });
 
         // Gather the main files in the pack
-        const packFiles = results.files.map(decodeURIComponent).filter(file => {
+        let packFiles = results.files.map(decodeURIComponent).filter(file => {
             return !file.includes("__")
                 && !file.includes("_(")
                 && !file.includes("_[")
@@ -160,15 +175,18 @@ class KinemancerFilePicker extends FilePicker {
 
         }
 
+        let foundResults = !!packFiles.length;
+
         for (const subDir of results.dirs) {
-            await this.searchDir(subDir, data);
+            let results = await this.searchDir(subDir, data);
+            foundResults = foundResults || results;
         }
 
-        return !!packFiles.length;
+        return foundResults;
 
     }
 
-    async getData(options = {}) {
+    async _prepareContext(options = {}) {
 
         this.filesWithColorVariants = {};
         this.filesWithWebmThumbnails = {};
@@ -176,7 +194,7 @@ class KinemancerFilePicker extends FilePicker {
         this.filtersActive = false;
         this.tags = {};
 
-        const data = await super.getData(options);
+        const data = await super._prepareContext(options);
 
         if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
 
@@ -210,37 +228,21 @@ class KinemancerFilePicker extends FilePicker {
         return data;
     }
 
-    async _render(force = false, options = {}) {
+    async _onRender(force = false, options = {}) {
 
-        let location = 0;
-        let value = "";
-
-        if (this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
-
-            if (options.preserveSearch) {
-                const searchElem = this.element.find('input[type="search"]');
-                location = searchElem.prop("selectionStart");
-                value = searchElem.val();
-            }
-
-        }
-
-        const result = await super._render(force, options);
+        const result = await super._onRender(force, options);
 
         if (this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
             if (options.preserveSearch) {
-                const searchElem = this.element.find('input[type="search"]');
+                const searchElem = $(this.element).find('input[type="search"]');
                 searchElem.trigger("focus");
-                searchElem.prop("selectionStart", location).prop("selectionEnd", location);
-                searchElem.val(value);
+                searchElem.prop("selectionStart", options.location).prop("selectionEnd", options.location);
+                searchElem.val(this.deepSearch);
             }
 
             this.addTagRegion("Asset Types", GameSettings.SETTINGS.ASSET_TYPES);
             this.addTagRegion("Time Periods", GameSettings.SETTINGS.TIME_PERIODS);
             this.addTagRegion("Categories", GameSettings.SETTINGS.CATEGORIES);
-
-            this.position.height = null;
-            this.element.css({ height: "" });
 
         }
 
@@ -270,7 +272,7 @@ class KinemancerFilePicker extends FilePicker {
             tagsParent.find(".form-fields").append(tagElem);
         });
 
-        tagsParent.insertBefore(this.element.find("div.form-fields.display-modes").parent());
+        tagsParent.insertBefore($(this.element).find("div.form-fields.display-modes").parent());
 
     }
 
@@ -301,41 +303,24 @@ class KinemancerFilePicker extends FilePicker {
         }
         if (this.deepSearch !== query) {
             this.deepSearch = query;
-            this.render(true, { preserveSearch: true });
-        }
-    }
 
-    _onDragStart(event) {
-        super._onDragStart(event);
-        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) return;
-        const li = event.currentTarget;
-        const jsonData = this.webmsWithJsonData[li.dataset.path];
-        if (!jsonData) return;
-        const eventBaseData = JSON.parse(event.dataTransfer.getData("text/plain"));
-        const newData = foundry.utils.mergeObject(eventBaseData, jsonData);
-        event.dataTransfer.setData("text/plain", JSON.stringify(newData));
+            const searchElem = $(this.element).find('input[type="search"]');
+            const location = searchElem.prop("selectionStart");
+
+            this.render(false, { preserveSearch: true, location });
+        }
     }
 }
 
 function filePickerHandler(filePicker, html) {
+
+    html = $(html);
+
     const location = html.find('input[name="target"]').val();
 
     if (!location.startsWith(CONSTANTS.MODULE_NAME)) return;
 
-    html.find(".directory.files-list").css("order", "1");
-    html.find(".directory.folders-list").css("order", "2");
-
-    const header = html.parent().parent().find(".window-header");
-    if (game.user.isGM && game.modules.get("the-kinemancer-creator")?.active && !header.find(".refresh-tags").length) {
-        const refreshTagsButton = $("<a class='header-button control refresh-tags'><i class='fas fa-refresh'></i> Tags</a>")
-        refreshTagsButton.insertBefore(header.find(".close"))
-
-        refreshTagsButton.on("click", function () {
-            filePicker.refreshTags();
-        })
-    }
-
-    html.find('ol:not(.details-list) li img').each((idx, imgElem) => {
+    html.find('ul.files-list li img').each((idx, imgElem) => {
 
         const img = $(imgElem);
         const parent = img.closest('[data-path]');
