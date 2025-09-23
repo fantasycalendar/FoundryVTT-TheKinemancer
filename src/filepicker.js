@@ -259,7 +259,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         tags.forEach(tag => {
 
-            const tagElem = $(`<div class="tag flexrow" style="padding:4px;"><a class="link">${tag}</a></div>`);
+            const tagElem = $(`<div class="tag flexrow"><a class="link">${tag}</a></div>`);
 
             const fp = this;
             const aElem = tagElem.find("a");
@@ -272,7 +272,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             tagsParent.find(".form-fields").append(tagElem);
         });
 
-        tagsParent.insertAfter($(this.element).find("div.flexrow.set-favorite").parent());
+        tagsParent.insertAfter($(this.element).find("#file-picker-filter").parent().parent());
 
     }
 

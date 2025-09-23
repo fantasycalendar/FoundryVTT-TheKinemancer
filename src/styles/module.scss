@@ -223,13 +223,18 @@ body[data-theme="light"] {
   color: #fff1f1;
 }
 
-#file-picker .kinemancer {
-  padding: 4px;
-}
-
 #file-picker .video-parent {
   position: relative;
   background-color: grey;
+}
+
+#file-picker .kinemancer .tags {
+  gap: 0.15rem;
+}
+
+#file-picker .kinemancer .tag {
+  padding: 1px 3px;
+  background: var(--input-background-color);
 }
 
 #file-picker .video-parent:after {
