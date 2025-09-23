@@ -223,18 +223,22 @@ body[data-theme="light"] {
   color: #fff1f1;
 }
 
-
-.filepicker .video-parent {
-  position: relative;
+#file-picker .kinemancer {
+  padding: 4px;
 }
 
-.filepicker .video-parent:after {
+#file-picker .video-parent {
+  position: relative;
+  background-color: grey;
+}
+
+#file-picker .video-parent:after {
   position: absolute;
   top: calc(50% - 10px);
   left: calc(50% - 10px);
 
   font-weight: 900;
-  font-family: 'Font Awesome 5 Free';
+  font-family: 'Font Awesome 6 Pro';
   content: '\f04b';
 
   display: block;
@@ -251,21 +255,21 @@ body[data-theme="light"] {
   transition: opacity .2s;
 }
 
-.filepicker .thumbs-list .video-parent:after {
+#file-picker .thumbs-list .video-parent:after {
   left: 18px;
 }
 
-.filepicker .video-parent:hover:after {
+#file-picker .video-parent:hover:after {
   opacity: 0;
 }
 
-.filepicker .video-parent.-loading:hover:after {
+#file-picker .video-parent.-loading:hover:after {
   opacity: .8;
   content: '\f021';
   animation: animation-preview-spin 1.5s linear infinite;
 }
 
-.filepicker .video-preview {
+#file-picker .video-preview {
   box-sizing: border-box;
   border: 1px solid #000;
   border-radius: 2px;
@@ -273,13 +277,13 @@ body[data-theme="light"] {
   position: relative;
 }
 
-.filepicker .tiles-list li .video-preview {
+#file-picker .tiles-list li .video-preview {
   border: none;
   margin: 0;
   object-fit: contain;
 }
 
-.filepicker .images-list li .video-preview {
+#file-picker .images-list li .video-preview {
   width: 100%;
   height: 200px;
   object-fit: contain;
@@ -287,7 +291,7 @@ body[data-theme="light"] {
   border: none;
 }
 
-.filepicker .thumbs-list .video-preview {
+#file-picker .thumbs-list .video-preview {
   flex: 0 0 48px;
   object-fit: cover;
   object-position: 50% 50%;
@@ -295,7 +299,7 @@ body[data-theme="light"] {
   border: none;
 }
 
-.filepicker .ats-color-circle {
+#file-picker .ats-color-circle {
   cursor: pointer;
   width: 15px;
   height: 15px;
@@ -313,7 +317,7 @@ body[data-theme="light"] {
   }
 }
 
-.filepicker .ats-variation-icon {
+#file-picker .ats-variation-icon {
   display: flex;
   align-items: center;
   justify-content: center;
