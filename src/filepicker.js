@@ -272,7 +272,11 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             tagsParent.find(".form-fields").append(tagElem);
         });
 
-        tagsParent.insertAfter($(this.element).find("#file-picker-filter").parent().parent());
+        let element = $(this.element).find(".favorites.kinemancer").length
+            ? $(this.element).find(".favorites.kinemancer").last()
+            : $(this.element).find("#file-picker-filter").parent().parent()
+
+        tagsParent.insertAfter(element);
 
     }
 
