@@ -255,7 +255,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         if (!tags.length) return;
 
-        const tagsParent = $(`<div class="form-group favorites kinemancer"><div class="flexrow"><span>${title}</span></div><div class="form-fields paths tags"></div></div>`);
+        const tagsParent = $(`<div class="form-group favorites kinemancer"><label>${title}</label><div class="form-fields paths tags"></div></div>`);
 
         tags.forEach(tag => {
 
