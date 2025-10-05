@@ -278,6 +278,9 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         tagsParent.insertAfter(element);
 
+        $(this.element).find(".window-content").css("overflow-y", "scroll");
+        $(this.element).find(".window-content").find("section").css("min-height", "351px");
+
     }
 
     toggleFilter(filterKey, tag) {
