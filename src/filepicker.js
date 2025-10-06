@@ -89,90 +89,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
         });
 
         for (const file of packFiles) {
-
-            const fileWithoutExtension = file.split(".")[0];
-            let dir = fileWithoutExtension.split("/");
-            dir.pop();
-            dir = dir.join("/")
-
-            if (this.filtersActive) {
-                if (!this.dirMatchesFilter(dir)) continue;
-            }
-
-            // Find the color variants
-            const colorVariants = results.files.filter(variantFile => {
-                return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
-            }).map(path => {
-                return lib.determineFileColor(path);
-            }).sort((a, b) => {
-                return a.order - b.order;
-            });
-
-            // Find the internal variants
-            const internalVariants = results.files.filter(variantFile => {
-                return variantFile.includes("_%5") && variantFile.startsWith(fileWithoutExtension);
-            });
-
-            if (this.deepSearch) {
-                const parts = file.split("/");
-                const fileName = parts.pop().split(".")[0].toLowerCase();
-                const basePath = parts.join("/")
-
-                const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
-                const additionalValidSearchParts = this.tags[basePath]?.length
-                    ? this.tags[basePath].map(str => str.toLowerCase())
-                    : [];
-
-                if (!searchParts.every(part => {
-                    if (part.startsWith("color:")) {
-                        const colorToFind = part.split(":")[1];
-                        return colorVariants.some(color => color.colorName.includes(colorToFind))
-                    }
-                    return fileName.includes(part) || additionalValidSearchParts.includes(part)
-                })) continue;
-            }
-
-            // Try to find the animated thumbnail webm file
-            this.filesWithWebmThumbnails[file] = results.files.find(thumbWebm => {
-                return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
-            });
-
-            // Get the static webp thumbnail
-            const thumbnail = results.files.find(thumb => {
-                return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
-            });
-
-            const jsonPath = results.files.find(json => {
-                return json.toLowerCase() === file.toLowerCase().replace(".webm", ".json");
-            });
-
-            if (jsonPath) {
-                this.webmsWithJsonData[file] ??= await fetch(jsonPath)
-                    .then(response => response.json())
-                    .then((result) => {
-                        result = foundry.utils.mergeObject(result, {});
-                        const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
-                        result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
-                        const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
-                        if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
-                            result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
-                        }
-                        return result
-                    })
-                    .catch(err => {
-                        console.log(err);
-                    });
-            }
-
-            this.filesWithColorVariants[file] = lib.uniqueArrayElements(colorVariants.map(config => config.color));
-            this.filesWithInternalVariants[file] = !!internalVariants.length;
-
-            data.files.push({
-                name: file.split("/").pop(),
-                img: thumbnail || "icons/svg/video.svg",
-                url: file
-            });
-
+            await this.processFile(file, data, results);
         }
 
         let foundResults = !!packFiles.length;
@@ -184,6 +101,96 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         return foundResults;
 
+    }
+
+    async processFile(file, data, results) {
+
+        const fileWithoutExtension = file.split(".")[0];
+        let dir = fileWithoutExtension.split("/");
+        dir.pop();
+        dir = dir.join("/")
+
+        if (this.filtersActive) {
+            if (!this.dirMatchesFilter(dir)) {
+                return false;
+            }
+        }
+
+        // Find the color variants
+        const colorVariants = results.files.filter(variantFile => {
+            return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
+        }).map(path => {
+            return lib.determineFileColor(path);
+        }).sort((a, b) => {
+            return a.order - b.order;
+        });
+
+        // Find the internal variants
+        const internalVariants = results.files.filter(variantFile => {
+            return variantFile.includes("_%5") && variantFile.startsWith(fileWithoutExtension);
+        });
+
+        if (this.deepSearch) {
+            const parts = file.split("/");
+            const fileName = parts.pop().split(".")[0].toLowerCase();
+            const basePath = parts.join("/")
+
+            const searchParts = this.deepSearch.split(" ").map(str => str.toLowerCase());
+            const additionalValidSearchParts = this.tags[basePath]?.length
+                ? this.tags[basePath].map(str => str.toLowerCase())
+                : [];
+
+            if (!searchParts.every(part => {
+                if (part.startsWith("color:")) {
+                    const colorToFind = part.split(":")[1];
+                    return colorVariants.some(color => color.colorName.includes(colorToFind))
+                }
+                return fileName.includes(part) || additionalValidSearchParts.includes(part)
+            })) {
+                return false;
+            }
+        }
+
+        // Try to find the animated thumbnail webm file
+        this.filesWithWebmThumbnails[file] = results.files.find(thumbWebm => {
+            return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
+        });
+
+        // Get the static webp thumbnail
+        const thumbnail = results.files.find(thumb => {
+            return thumb.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webp");
+        });
+
+        const jsonPath = results.files.find(json => {
+            return json.toLowerCase() === file.toLowerCase().replace(".webm", ".json");
+        });
+
+        if (jsonPath) {
+            this.webmsWithJsonData[file] ??= await fetch(jsonPath)
+                .then(response => response.json())
+                .then((result) => {
+                    result = foundry.utils.mergeObject(result, {});
+                    const states = foundry.utils.getProperty(result, CONSTANTS.STATES_FLAG);
+                    result[CONSTANTS.CURRENT_STATE_FLAG] = states.findIndex(s => s.default);
+                    const currentState = states[result[CONSTANTS.CURRENT_STATE_FLAG]];
+                    if (result[CONSTANTS.FOLDER_PATH_FLAG] && currentState.file) {
+                        result["texture.src"] = result[CONSTANTS.FOLDER_PATH_FLAG] + "/" + currentState.file;
+                    }
+                    return result
+                })
+                .catch(err => {
+                    console.log(err);
+                });
+        }
+
+        this.filesWithColorVariants[file] = lib.uniqueArrayElements(colorVariants.map(config => config.color));
+        this.filesWithInternalVariants[file] = !!internalVariants.length;
+
+        data.files.push({
+            name: file.split("/").pop(),
+            img: thumbnail || "icons/svg/video.svg",
+            url: file
+        });
     }
 
     async _prepareContext(options = {}) {
@@ -206,20 +213,35 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             data.files = [];
         }
 
-        const indicesToRemove = [];
+        if (!GameSettings.USE_NATIVE_FILEPICKER.get()) {
+            const indicesToRemove = [];
 
-        for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
+            for (const [index, dir] of foundry.utils.deepClone(data.dirs).entries()) {
 
-            const foundMatches = await this.searchDir(dir.path, data);
+                const foundMatches = await this.searchDir(dir.path, data);
 
-            if (foundMatches) {
-                indicesToRemove.push(index);
+                if (foundMatches) {
+                    indicesToRemove.push(index);
+                }
+
             }
 
+            indicesToRemove.reverse()
+            for (const i of indicesToRemove) data.dirs.splice(i, 1);
+        } else {
+            const mainFiles = data.files.filter(file => {
+                return !file.url.includes("__")
+                    && !file.url.includes("_(")
+                    && !file.url.includes("_[")
+                    && !file.url.includes("_thumb")
+                    && file.url.toLowerCase().endsWith(".webm")
+            }).map(file => file.url);
+            const results = { files: data.files.map(f => f.url) }
+            data.files = [];
+            for (const file of mainFiles) {
+                await this.processFile(file, data, results);
+            }
         }
-
-        indicesToRemove.reverse()
-        for (const i of indicesToRemove) data.dirs.splice(i, 1);
 
         if (this.deepSearch || this.filtersActive) {
             data.dirs = [];
@@ -232,7 +254,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         const result = await super._onRender(force, options);
 
-        if (this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
+        if (this.result.target.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
             if (options.preserveSearch) {
                 const searchElem = $(this.element).find('input[type="search"]');
                 searchElem.trigger("focus");
@@ -250,6 +272,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
     }
 
     addTagRegion(title, setting_key) {
+        if (!GameSettings.USE_NATIVE_FILEPICKER.get()) return;
 
         const tags = GameSettings.getUniqueTags(setting_key);
 
@@ -304,7 +327,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
     }
 
     _onSearchFilter(event, query, rgx, html) {
-        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME)) {
+        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME) || !GameSettings.USE_NATIVE_FILEPICKER.get()) {
             this.deepSearch = "";
             return super._onSearchFilter(event, query, rgx, html);
         }

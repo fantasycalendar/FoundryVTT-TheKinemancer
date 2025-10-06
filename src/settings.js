@@ -6,6 +6,7 @@ import DownloaderApp from "./applications/downloader/downloader-app.js";
 class Settings extends TJSGameSettings {
 
     SETTINGS = {
+        USE_NATIVE_FILEPICKER: "use_native_filepicker",
         ASSET_TYPES: CONSTANTS.FLAG_KEYS.ASSET_TYPES,
         TIME_PERIODS: CONSTANTS.FLAG_KEYS.TIME_PERIODS,
         CATEGORIES: CONSTANTS.FLAG_KEYS.CATEGORIES,
@@ -40,6 +41,15 @@ class Settings extends TJSGameSettings {
     }
 
     initialize() {
+
+        game.settings.register(CONSTANTS.MODULE_NAME, "use_native_filepicker", {
+            name: "Use Native Filepicker",
+            hint: "On certain hosting providers, the native filepicker may be slow or unresponsive. If you are experiencing issues with the filepicker, try enabling this setting.",
+            icon: "",
+            config: true,
+            type: Boolean,
+            default: window.location.hostname.endsWith("forge-vtt.com")
+        });
 
         game.settings.registerMenu(CONSTANTS.MODULE_NAME, "downloader", {
             name: "Asset Pack Manager",
