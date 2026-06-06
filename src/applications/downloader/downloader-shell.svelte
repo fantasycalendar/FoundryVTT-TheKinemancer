@@ -1,16 +1,12 @@
 <script>
 
-    import { ApplicationShell } from "#runtime/svelte/component/application";
     import ProgressBarStore from "../../lib/ProgressBarStore.js"
     import ProgressBar from "../components/ProgressBar.svelte";
     import Downloader from "../../lib/downloader.js";
     import { writable } from "svelte/store";
-    import { uniqueArrayElements } from "../../lib/lib.js";
     import * as lib from "../../lib/lib.js";
 
-    export let elementRoot;
-
-    let step = 1;
+    let step = $state(1);
 
     const url = writable("");
     const downloadedPaths = writable([]);
@@ -23,7 +19,9 @@
     const text = ProgressBarStore.textStore;
     ProgressBarStore.text = "";
 
-    $: if ($downloading) step = 2;
+    $effect(() => {
+        if ($downloading) step = 2;
+    });
 
     async function downloadPack() {
         Downloader.downloadPack($url.trim())
@@ -52,88 +50,82 @@
 
 </script>
 
-<svelte:options accessors={true}/>
+<div>
 
-<ApplicationShell bind:elementRoot>
+    {#if step === 1}
 
-	<div>
+        <div class="form-control">
+            <p style="font-size: 1rem; text-align: center; margin-bottom:0.65rem;">
+                Get the download links from <a href="https://www.thekinemancer.com/" target="_blank">The
+                Kinemancer's website</a>
+            </p>
+            <div>
+                <input type="text" placeholder="https://www.thekinemancer.com/download/..." bind:value={$url}/>
+            </div>
+            <div>
+                <button type="button" onclick={downloadPack} disabled="{!$url}">Download</button>
+            </div>
+        </div>
 
-		{#if step === 1}
+    {/if}
 
-			<div class="form-control">
-				<p style="font-size: 1rem; text-align: center; margin-bottom:0.65rem;">
-					Get the download links from <a href="https://www.thekinemancer.com/" target="_blank">The
-					Kinemancer's website</a>
-				</p>
-				<div>
-					<input type="text" placeholder="https://www.thekinemancer.com/download/..." bind:value={$url}/>
-				</div>
-				<div>
-					<button type="button" on:click={downloadPack} disabled="{!$url}">Download</button>
-				</div>
-			</div>
+    {#if step === 2 && !$failed}
 
-		{/if}
+        <h1>Downloading pack...</h1>
 
-		{#if step === 2 && !$failed}
+        <div class="release-metadata">
+            <div>Download ZIP Size:</div>
+            <div>{$totalSize}</div>
+        </div>
 
-			<h1>Downloading pack...</h1>
+        <ProgressBar progress={$progress} text={$text}/>
 
-			<div class="release-metadata">
-				<div>Download ZIP Size:</div>
-				<div>{$totalSize}</div>
-			</div>
+        {#if !$downloading}
+            <button type="button" class="download-again-button" onclick={reset}>Download another pack</button>
+        {/if}
 
-			<ProgressBar progress={$progress} text={$text}/>
+    {/if}
 
-			{#if !$downloading}
-				<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
-			{/if}
+    {#if step === 2 && $failed}
 
-		{/if}
+        <h1>Failed to download pack!</h1>
 
-		{#if step === 2 && $failed}
+        <div class="release-metadata">
+            <div>Download ZIP Size:</div>
+            <div>{$totalSize}</div>
+        </div>
 
-			<h1>Failed to download pack!</h1>
+        <ProgressBar progress={$progress} text={$text} textColor="white" backgroundColor="#9b0a0d"/>
 
-			<div class="release-metadata">
-				<div>Download ZIP Size:</div>
-				<div>{$totalSize}</div>
-			</div>
+        <button type="button" class="download-again-button" onclick={reset}>Download another pack</button>
 
-			<ProgressBar progress={$progress} text={$text} textColor="white" backgroundColor="#9b0a0d"/>
+    {/if}
 
-			<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
+    {#if step === 3}
 
-		{/if}
+        <h1>Pack downloaded!</h1>
 
-		{#if step === 3}
+        <div class="release-metadata">
+            <div>Downloaded ZIP Size:</div>
+            <div>{$totalSize}</div>
+        </div>
 
-			<h1>Pack downloaded!</h1>
+        <details>
+            <summary>Click to show all downloaded files</summary>
+            <ul>
+                {#each $downloadedPaths as path}
+                    <li><button type="button" class="link-button" onclick={() => openFile(path)}>{path}</button></li>
+                {/each}
+            </ul>
+        </details>
 
-			<div class="release-metadata">
-				<div>Downloaded ZIP Size:</div>
-				<div>{$totalSize}</div>
-			</div>
+        <ProgressBar progress={$progress} text={$text}/>
 
-			<details>
-				<summary>Click to show all downloaded files</summary>
-				<ul>
-					{#each $downloadedPaths as path}
-						<li><a on:click={() => openFile(path)}>{path}</a></li>
-					{/each}
-				</ul>
-			</details>
+        <button type="button" class="download-again-button" onclick={reset}>Download another pack</button>
 
-			<ProgressBar progress={$progress} text={$text}/>
+    {/if}
 
-			<button type="button" class="download-again-button" on:click={reset}>Download another pack</button>
-
-		{/if}
-
-	</div>
-
-</ApplicationShell>
+</div>
 
 <style lang="scss">
 
@@ -143,13 +135,6 @@
 
   button {
     margin-top: 0.65rem;
-  }
-
-  .release-description {
-    border: 1px solid rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-    padding: 0.5rem;
-    margin: 0.5rem 0;
   }
 
   .release-metadata {
@@ -164,18 +149,6 @@
     > div {
       display: flex;
       align-items: center;
-
-      > div {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 5px;
-        text-align: center;
-        min-height: 26px;
-        min-width: 26px;
-        font-size: 1.2rem;
-        margin-left: 0.25rem;
-      }
     }
   }
 
@@ -186,14 +159,18 @@
       max-height: 250px;
       overflow: auto;
 
-      a {
+      .link-button {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        width: auto;
+        text-align: left;
         color: var(--color-text-hyperlink);
+        cursor: pointer;
+        font: inherit;
       }
     }
-  }
-
-  footer {
-    display: flex;
   }
 
   button {

@@ -1,9 +1,8 @@
-import { TJSGameSettings } from "#runtime/svelte/store/fvtt/settings";
 import CONSTANTS from "./constants.js";
 import * as lib from "./lib/lib.js";
 import DownloaderApp from "./applications/downloader/downloader-app.js";
 
-class Settings extends TJSGameSettings {
+class Settings {
 
     SETTINGS = {
         USE_NATIVE_FILEPICKER: "use_native_filepicker",
@@ -11,10 +10,6 @@ class Settings extends TJSGameSettings {
         TIME_PERIODS: CONSTANTS.FLAG_KEYS.TIME_PERIODS,
         CATEGORIES: CONSTANTS.FLAG_KEYS.CATEGORIES,
         TAGS: CONSTANTS.FLAG_KEYS.TAGS,
-    }
-
-    constructor() {
-        super(CONSTANTS.MODULE_NAME);
     }
 
     getUniqueTags(settingsKey) {
@@ -87,69 +82,45 @@ class Settings extends TJSGameSettings {
             restricted: true
         });
 
-        this.register({
-            namespace: CONSTANTS.MODULE_NAME,
-            key: this.SETTINGS.ASSET_TYPES,
-            options: {
-                scope: "world",
-                config: false,
-                default: {},
-                type: Object
-            }
+        game.settings.register(CONSTANTS.MODULE_NAME, this.SETTINGS.ASSET_TYPES, {
+            scope: "world",
+            config: false,
+            default: {},
+            type: Object
         });
 
-        this.register({
-            namespace: CONSTANTS.MODULE_NAME,
-            key: this.SETTINGS.TIME_PERIODS,
-            options: {
-                scope: "world",
-                config: false,
-                default: {},
-                type: Object
-            }
+        game.settings.register(CONSTANTS.MODULE_NAME, this.SETTINGS.TIME_PERIODS, {
+            scope: "world",
+            config: false,
+            default: {},
+            type: Object
         });
 
-        this.register({
-            namespace: CONSTANTS.MODULE_NAME,
-            key: this.SETTINGS.CATEGORIES,
-            options: {
-                scope: "world",
-                config: false,
-                default: {},
-                type: Object
-            }
+        game.settings.register(CONSTANTS.MODULE_NAME, this.SETTINGS.CATEGORIES, {
+            scope: "world",
+            config: false,
+            default: {},
+            type: Object
         });
 
-        this.register({
-            namespace: CONSTANTS.MODULE_NAME,
-            key: this.SETTINGS.TAGS,
-            options: {
-                scope: "world",
-                config: false,
-                default: {},
-                type: Object
-            }
+        game.settings.register(CONSTANTS.MODULE_NAME, this.SETTINGS.TAGS, {
+            scope: "world",
+            config: false,
+            default: {},
+            type: Object
         });
 
-        Object.entries(this.SETTINGS).forEach(entry => {
-            this[entry[0]] = {
-                get: () => {
-                    return game.settings.get(CONSTANTS.MODULE_NAME, entry[1]);
-                },
-                set: (value) => {
-                    return game.settings.set(CONSTANTS.MODULE_NAME, entry[1], value);
-                },
-                store: this.getStore(entry[1])
+        Object.entries(this.SETTINGS).forEach(([alias, key]) => {
+            this[alias] = {
+                get: () => game.settings.get(CONSTANTS.MODULE_NAME, key),
+                set: (value) => game.settings.set(CONSTANTS.MODULE_NAME, key, value),
             };
         });
     }
 }
 
 
-class URLShim extends FormApplication {
-    /**
-     * @inheritDoc
-     */
+class URLShim extends foundry.applications.api.ApplicationV2 {
     constructor() {
         super({});
         window.open(this.urlToOpen, "_blank");
@@ -159,11 +130,8 @@ class URLShim extends FormApplication {
         return "";
     }
 
-    async _updateObject(event, formData) {
-    }
-
-    render() {
-        this.close();
+    async render() {
+        return this;
     }
 }
 

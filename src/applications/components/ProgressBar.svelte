@@ -1,23 +1,21 @@
 <script>
 
-  import { applyStyles } from '#runtime/svelte/action/dom/style';
+	let {
+		progress,
+		text,
+		backgroundColor = "var(--the-kinemancer-color)",
+		textColor = "inherit"
+	} = $props();
 
-	export let progress;
-	export let text;
-	export let backgroundColor = "var(--the-kinemancer-color)";
-	export let textColor = "inherit";
-
-	let divWidth;
-
-	$: styles = {
-		"--progress-width": `${divWidth ?? 0}px`,
-		"--progress": `${progress * 100}%`,
-		"color": textColor
-	}
+	let divWidth = $state(0);
 
 </script>
 
-<div class="progress" bind:offsetWidth={divWidth} use:applyStyles={styles}>
+<div class="progress"
+     bind:offsetWidth={divWidth}
+     style:--progress-width="{divWidth ?? 0}px"
+     style:--progress="{progress * 100}%"
+     style:color={textColor}>
 	<div class="progress-bar" style="background-color: {backgroundColor};">
 		<div class="progress-text">{text}</div>
 	</div>

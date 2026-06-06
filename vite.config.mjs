@@ -1,33 +1,30 @@
 /* eslint-env node */
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-
-import {
-    postcssConfig,
-    terserConfig
-} from '@typhonjs-fvtt/runtime/rollup';
-
+import autoprefixer from 'autoprefixer';
+import postcssPresetEnv from 'postcss-preset-env';
 import { sveltePreprocess } from 'svelte-preprocess';
 
 import moduleJSON from './module.json' with { type: 'json' };
 
-// ATTENTION!
-// Please modify the below variables: s_PACKAGE_ID and s_SVELTE_HASH_ID appropriately.
-
 const s_PACKAGE_ID = `modules/${moduleJSON.id}`;
 
-// A short additional string to add to Svelte CSS hash values to make yours unique. This reduces the amount of
-// duplicated framework CSS overlap between many TRL packages enabled on Foundry VTT at the same time. 'tse' is chosen
-// by shortening 'template-svelte-esm'.
+// A short additional string to add to Svelte CSS hash values to make this module's
+// scoped styles unique in the browser debugger.
 const s_SVELTE_HASH_ID = 'tk';
 
-const s_COMPRESS = false;  // Set to true to compress the module bundle.
 const s_SOURCEMAPS = true; // Generate sourcemaps for the bundle (recommended).
 
+const postcss = {
+    inject: false,
+    sourceMap: s_SOURCEMAPS,
+    extensions: ['.css'],
+    plugins: [
+        autoprefixer,
+        postcssPresetEnv
+    ]
+};
+
 export default ({ mode }) => {
-    // Provides a custom hash adding the string defined in `s_SVELTE_HASH_ID` to scoped Svelte styles;
-    // This is reasonable to do as the framework styles in TRL compiled across `n` different packages will
-    // be the same. Slightly modifying the hash ensures that your package has uniquely scoped styles for all
-    // TRL components and makes it easier to review styles in the browser debugger.
     const compilerOptions = mode === 'production' ? {
         cssHash: ({ hash, css }) => `svelte-${s_SVELTE_HASH_ID}-${hash(css)}`
     } : {};
@@ -47,20 +44,13 @@ export default ({ mode }) => {
             target: ['es2022']
         },
 
-        css: {
-            // Creates a standard configuration for PostCSS with autoprefixer & postcss-preset-env.
-            postcss: postcssConfig({ compress: s_COMPRESS, sourceMap: s_SOURCEMAPS })
-        },
+        css: { postcss },
 
         // About server options:
-        // - Set to `open` to boolean `false` to not open a browser window automatically. This is useful if you set up a
-        // debugger instance in your IDE and launch it with the URL: 'http://localhost:29999/game'.
+        // - Set `open` to boolean `false` to not open a browser window automatically.
         //
-        // - The top proxy entry redirects requests under the module path for `style.css` and following standard static
-        // directories: `assets`, `lang`, and `packs` and will pull those resources from the main Foundry / 30000 server.
-        // This is necessary to reference the dev resources as the root is `/src` and there is no public / static
-        // resources served with this particular Vite configuration. Modify the proxy rule as necessary for your
-        // static resources / project.
+        // - The top proxy entry redirects requests under the module path for the compiled CSS and the static
+        //   `assets`, `lang`, `packs` directories, pulling them from the main Foundry / 30000 server.
         server: {
             port: 29999,
             open: '/game',
@@ -87,9 +77,8 @@ export default ({ mode }) => {
             emptyOutDir: false,
             sourcemap: s_SOURCEMAPS,
             brotliSize: true,
-            minify: s_COMPRESS ? 'terser' : false,
+            minify: false,
             target: ['es2022'],
-            terserOptions: s_COMPRESS ? { ...terserConfig(), ecma: 2022 } : void 0,
             lib: {
                 entry: './module.js',
                 formats: ['es'],
@@ -104,7 +93,6 @@ export default ({ mode }) => {
             }
         },
 
-        // Necessary when using the dev server for top-level await usage inside TRL.
         optimizeDeps: {
             esbuildOptions: {
                 target: 'es2022'
