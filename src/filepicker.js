@@ -286,6 +286,23 @@ function restoreSearchInput(picker, location) {
     searchElem.val(picker.deepSearch);
 }
 
+// Walk the entire module asset tree to populate jsonDataCache with every
+// available webm's sidecar JSON. Used by Refresh Tags so the rebuild step has
+// data to read from even when the user hasn't scrolled through the picker yet.
+async function warmCacheFromAssetTree() {
+    const fakePicker = {
+        filtersActive: false,
+        filters: {},
+        deepSearch: "",
+        tags: {}
+    };
+    const sinkData = { files: [] };
+    const rootBrowse = await getFilePicker().browse("data", CONSTANTS.MODULE_NAME);
+    for (const dir of rootBrowse.dirs) {
+        await searchDirFn(dir, sinkData, fakePicker);
+    }
+}
+
 async function rebuildTagSettingsFromCache() {
     const tags = {
         [GameSettings.SETTINGS.ASSET_TYPES]: {},
@@ -341,6 +358,7 @@ function buildPickerV2() {
 
         static async _onRefreshTags() {
             invalidateBrowseCache();
+            await warmCacheFromAssetTree();
             await rebuildTagSettingsFromCache();
             return this.render(true);
         }
@@ -440,6 +458,7 @@ function patchV1FilePicker() {
                 icon: "fa-solid fa-refresh",
                 onclick: async () => {
                     invalidateBrowseCache();
+                    await warmCacheFromAssetTree();
                     await rebuildTagSettingsFromCache();
                     return this.render(true);
                 }
