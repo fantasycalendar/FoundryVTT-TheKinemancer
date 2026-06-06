@@ -404,6 +404,11 @@ function buildPickerV2() {
                 data.dirs = [];
             }
 
+            // Templates render the "No results" hint based on this flag,
+            // computed by Foundry from the original counts. We've mutated
+            // files/dirs since then so recompute it.
+            data.noResults = (data.files?.length ?? 0) + (data.dirs?.length ?? 0) === 0;
+
             return data;
         }
 
@@ -493,6 +498,11 @@ function patchV1FilePicker() {
         if (this.deepSearch || this.filtersActive) {
             data.dirs = [];
         }
+
+        // v12's template renders the "No results" note based on this flag,
+        // computed by Foundry from the original counts. We've mutated files/dirs
+        // since then so recompute it.
+        data.noResults = (data.files?.length ?? 0) + (data.dirs?.length ?? 0) === 0;
 
         return data;
     };
