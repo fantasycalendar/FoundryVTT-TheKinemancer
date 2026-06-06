@@ -19,10 +19,14 @@ const foundryGlobals = {
 	$: "readonly",
 	jQuery: "readonly",
 
-	// Legacy / shim globals still re-exposed in v13+
+	// Legacy / shim globals still re-exposed in v13+. Tile/Token/VideoHelper are
+	// also globals on v12; the compat layer reads them via getTileClass etc.
 	Application: "readonly",
 	ApplicationV2: "readonly",
 	FilePicker: "readonly",
+	Tile: "readonly",
+	Token: "readonly",
+	VideoHelper: "readonly",
 	TextureLoader: "readonly",
 	fromUuid: "readonly",
 	fromUuidSync: "readonly",
