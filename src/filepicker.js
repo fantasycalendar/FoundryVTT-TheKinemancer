@@ -262,14 +262,15 @@ function addTagRegionFn(picker, title, settingKey) {
         tagsParent.find(".form-fields").append(tagElem);
     });
 
+    // Anchor after the last existing Kinemancer tag region so stacking works on
+    // re-renders. On first render, fall back to the form-group containing the
+    // search filter input. v12 has no #file-picker-filter id; both versions
+    // expose <input name="filter">, so use that as the cross-version hook.
     let element = $(picker.element).find(".favorites.kinemancer").length
         ? $(picker.element).find(".favorites.kinemancer").last()
-        : $(picker.element).find("#file-picker-filter").parent().parent()
+        : $(picker.element).find('input[name="filter"]').closest(".form-group")
 
     tagsParent.insertAfter(element);
-
-    $(picker.element).find(".window-content").css("overflow-y", "scroll");
-    $(picker.element).find(".window-content").find("section").css("min-height", "351px");
 }
 
 function renderTagRegions(picker) {
