@@ -419,11 +419,12 @@ function filePickerHandler(filePicker, html) {
 
         const width = img.attr('width');
         const height = img.attr('height');
+        const sizeAttrs = (width && height) ? `width="${width}" height="${height}"` : '';
 
         const webmPath = cacheGet(webmThumbnailsCache, path) || path;
         const title = webmPath.split("/").pop().replaceAll("_", " ").replace(".webm", "").replace("thumb", "").trim();
 
-        const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}" title="${title}"></video>`);
+        const video = $(`<video class="fas video-preview" loop ${sizeAttrs} title="${title}"></video>`);
         video.hide();
         parent.prepend(video);
         const videoElem = video.get(0);

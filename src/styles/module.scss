@@ -243,7 +243,7 @@ body[data-theme="light"] {
   left: calc(50% - 10px);
 
   font-weight: 900;
-  font-family: 'Font Awesome 6 Pro';
+  font-family: 'Font Awesome 7 Pro', 'Font Awesome 6 Pro', 'FontAwesome';
   content: '\f04b';
 
   display: block;
@@ -260,7 +260,7 @@ body[data-theme="light"] {
   transition: opacity .2s;
 }
 
-#file-picker .thumbs-list .video-parent:after {
+#file-picker .thumbs .video-parent:after {
   left: 18px;
 }
 
@@ -282,13 +282,15 @@ body[data-theme="light"] {
   position: relative;
 }
 
-#file-picker .tiles-list li .video-preview {
+#file-picker .tiles li .video-preview {
   border: none;
   margin: 0;
   object-fit: contain;
+  width: 100%;
+  height: 100%;
 }
 
-#file-picker .images-list li .video-preview {
+#file-picker .images li .video-preview {
   width: 100%;
   height: 200px;
   object-fit: contain;
@@ -296,7 +298,7 @@ body[data-theme="light"] {
   border: none;
 }
 
-#file-picker .thumbs-list .video-preview {
+#file-picker .thumbs .video-preview {
   flex: 0 0 48px;
   object-fit: cover;
   object-position: 50% 50%;
