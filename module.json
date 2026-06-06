@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "library": false,
   "compatibility": {
-    "minimum": 13,
+    "minimum": 12,
     "verified": 14
   },
   "authors": [
