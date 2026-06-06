@@ -176,6 +176,8 @@ class Downloader {
 
         await lib.wait();
 
+        Hooks.callAll(CONSTANTS.HOOKS.INVALIDATE_FILEPICKER_CACHE);
+
         const deltaTime = performance.now() - this.startDeltaTime;
         ProgressBar.percent = 100;
         ProgressBar.text = `Done! Downloaded ${filesToCreate.length} files, which took ${lib.deltaTimeToString(deltaTime)}.`

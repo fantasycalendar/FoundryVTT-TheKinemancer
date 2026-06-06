@@ -3,24 +3,53 @@ import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
 
 
+const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_DEBOUNCE_MS = 200;
+
+const browseCache = new Map();
+const jsonDataCache = new Map();
+const colorVariantsCache = new Map();
+const webmThumbnailsCache = new Map();
+
+function cacheGet(map, key) {
+    const entry = map.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+        map.delete(key);
+        return undefined;
+    }
+    return entry.value;
+}
+
+function cacheSet(map, key, value) {
+    map.set(key, { value, expiresAt: Date.now() + BROWSE_CACHE_TTL_MS });
+    return value;
+}
+
+function invalidateBrowseCache() {
+    browseCache.clear();
+    jsonDataCache.clear();
+    colorVariantsCache.clear();
+    webmThumbnailsCache.clear();
+}
+
+
 export default function registerFilePicker() {
 
     CONFIG.ux.FilePicker = KinemancerFilePicker;
 
     Hooks.on('renderFilePicker', filePickerHandler);
+    Hooks.on(CONSTANTS.HOOKS.INVALIDATE_FILEPICKER_CACHE, invalidateBrowseCache);
 
 }
 
 class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implementation {
 
-    filesWithColorVariants = {};
-    filesWithInternalVariants = {};
-    filesWithWebmThumbnails = {};
-    webmsWithJsonData = {};
     deepSearch = "";
     filtersActive = false;
     tags = {};
     filters = {};
+    _searchDebounceHandle = null;
 
     static DEFAULT_OPTIONS = foundry.utils.mergeObject(foundry.applications.apps.FilePicker.DEFAULT_OPTIONS, {
         actions: {
@@ -32,19 +61,22 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
         return super._getHeaderControls().concat([{
             action: "refreshTags",
             icon: "fa-solid fa-refresh",
-            label: "Refresh Tags",
+            label: "Refresh",
             visible: game.user.isGM
         }]);
     }
 
     async refreshTags() {
+        invalidateBrowseCache();
         const tags = {
             [GameSettings.SETTINGS.ASSET_TYPES]: {},
             [GameSettings.SETTINGS.TIME_PERIODS]: {},
             [GameSettings.SETTINGS.CATEGORIES]: {},
             [GameSettings.SETTINGS.TAGS]: {}
         };
-        for (const [filePath, data] of Object.entries(this.webmsWithJsonData)) {
+        for (const [filePath, entry] of jsonDataCache.entries()) {
+            if (Date.now() > entry.expiresAt) continue;
+            const data = entry.value;
             const dirPath = lib.getFolder(filePath);
             if (foundry.utils.getProperty(data, CONSTANTS.ASSET_TYPES_FLAG)?.length) {
                 tags[GameSettings.SETTINGS.ASSET_TYPES][dirPath] = foundry.utils.getProperty(data, CONSTANTS.ASSET_TYPES_FLAG);
@@ -77,7 +109,11 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
     async searchDir(dir, data) {
 
-        const results = await foundry.applications.apps.FilePicker.implementation.browse("data", `${dir}/*`, { wildcard: true });
+        let results = cacheGet(browseCache, dir);
+        if (!results) {
+            results = await foundry.applications.apps.FilePicker.implementation.browse("data", `${dir}/*`, { wildcard: true });
+            cacheSet(browseCache, dir, results);
+        }
 
         // Gather the main files in the pack
         let packFiles = results.files.map(decodeURIComponent).filter(file => {
@@ -116,7 +152,8 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             }
         }
 
-        // Find the color variants
+        // Find the color variants. The rich list (with .color/.order/.colorName) is needed
+        // locally for deep-search matching; the flat string list is what filePickerHandler reads.
         const colorVariants = results.files.filter(variantFile => {
             return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
         }).map(path => {
@@ -124,6 +161,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
         }).sort((a, b) => {
             return a.order - b.order;
         });
+        cacheSet(colorVariantsCache, file, lib.uniqueArrayElements(colorVariants.map(config => config.color)));
 
         // Find the internal variants
         const internalVariants = results.files.filter(variantFile => {
@@ -152,9 +190,13 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
         }
 
         // Try to find the animated thumbnail webm file
-        this.filesWithWebmThumbnails[file] = results.files.find(thumbWebm => {
-            return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
-        });
+        let webmThumb = cacheGet(webmThumbnailsCache, file);
+        if (webmThumb === undefined) {
+            webmThumb = results.files.find(thumbWebm => {
+                return thumbWebm.toLowerCase() === file.toLowerCase().replace(".webm", "_thumb.webm");
+            }) ?? null;
+            cacheSet(webmThumbnailsCache, file, webmThumb);
+        }
 
         // Get the static webp thumbnail
         const thumbnail = results.files.find(thumb => {
@@ -165,8 +207,8 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             return json.toLowerCase() === file.toLowerCase().replace(".webm", ".json");
         });
 
-        if (jsonPath) {
-            this.webmsWithJsonData[file] ??= await fetch(jsonPath)
+        if (jsonPath && !cacheGet(jsonDataCache, jsonPath)) {
+            const fetched = await fetch(jsonPath)
                 .then(response => response.json())
                 .then((result) => {
                     result = foundry.utils.mergeObject(result, {});
@@ -181,23 +223,19 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
                 .catch(err => {
                     console.log(err);
                 });
+            if (fetched) cacheSet(jsonDataCache, jsonPath, fetched);
         }
-
-        this.filesWithColorVariants[file] = lib.uniqueArrayElements(colorVariants.map(config => config.color));
-        this.filesWithInternalVariants[file] = !!internalVariants.length;
 
         data.files.push({
             name: file.split("/").pop(),
             img: thumbnail || "icons/svg/video.svg",
+            icon: "fa-solid fa-file-video",
             url: file
         });
     }
 
     async _prepareContext(options = {}) {
 
-        this.filesWithColorVariants = {};
-        this.filesWithWebmThumbnails = {};
-        this.webmsWithJsonData = {};
         this.filtersActive = false;
         this.tags = {};
 
@@ -272,7 +310,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
     }
 
     addTagRegion(title, setting_key) {
-        if (!GameSettings.USE_NATIVE_FILEPICKER.get()) return;
+        if (GameSettings.USE_NATIVE_FILEPICKER.get()) return;
 
         const tags = GameSettings.getUniqueTags(setting_key);
 
@@ -289,7 +327,12 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
             tagElem.attr("class", "tag flexrow " + this.getTagClass(setting_key, tag));
             aElem.on("click", function () {
-                fp.toggleFilter(setting_key, tag);
+                fp.toggleFilter(setting_key, tag, 1);
+                fp.render(true);
+            })
+            aElem.on("contextmenu", function (event) {
+                event.preventDefault();
+                fp.toggleFilter(setting_key, tag, -1);
                 fp.render(true);
             })
             tagsParent.find(".form-fields").append(tagElem);
@@ -306,18 +349,31 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
     }
 
-    toggleFilter(filterKey, tag) {
-        if (this.filters[filterKey]?.[tag] === undefined) {
-            if (!this.filters[filterKey]) this.filters[filterKey] = {}
-            this.filters[filterKey][tag] = true;
-        } else if (this.filters[filterKey]?.[tag]) {
-            this.filters[filterKey][tag] = false;
+    toggleFilter(filterKey, tag, direction = 1) {
+        const current = this.filters[filterKey]?.[tag];
+        let next;
+        if (direction === 1) {
+            if (current === undefined) next = true;
+            else if (current === true) next = false;
+            else next = undefined;
         } else {
-            delete this.filters[filterKey][tag];
-            if (foundry.utils.isEmpty(this.filters[filterKey])) {
-                delete this.filters[filterKey];
-            }
+            if (current === undefined) next = false;
+            else if (current === false) next = true;
+            else next = undefined;
         }
+
+        if (next === undefined) {
+            if (this.filters[filterKey]) {
+                delete this.filters[filterKey][tag];
+                if (foundry.utils.isEmpty(this.filters[filterKey])) {
+                    delete this.filters[filterKey];
+                }
+            }
+            return;
+        }
+
+        if (!this.filters[filterKey]) this.filters[filterKey] = {};
+        this.filters[filterKey][tag] = next;
     }
 
     getTagClass(filterKey, tag) {
@@ -327,7 +383,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
     }
 
     _onSearchFilter(event, query, rgx, html) {
-        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME) || !GameSettings.USE_NATIVE_FILEPICKER.get()) {
+        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
             this.deepSearch = "";
             return super._onSearchFilter(event, query, rgx, html);
         }
@@ -337,7 +393,10 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
             const searchElem = $(this.element).find('input[type="search"]');
             const location = searchElem.prop("selectionStart");
 
-            this.render(false, { preserveSearch: true, location });
+            clearTimeout(this._searchDebounceHandle);
+            this._searchDebounceHandle = setTimeout(() => {
+                this.render(false, { preserveSearch: true, location });
+            }, SEARCH_DEBOUNCE_MS);
         }
     }
 }
@@ -361,7 +420,7 @@ function filePickerHandler(filePicker, html) {
         const width = img.attr('width');
         const height = img.attr('height');
 
-        const webmPath = filePicker.filesWithWebmThumbnails[path] || path;
+        const webmPath = cacheGet(webmThumbnailsCache, path) || path;
         const title = webmPath.split("/").pop().replaceAll("_", " ").replace(".webm", "").replace("thumb", "").trim();
 
         const video = $(`<video class="fas video-preview" loop width="${width}" height="${height}" title="${title}"></video>`);
@@ -372,7 +431,7 @@ function filePickerHandler(filePicker, html) {
 
         parent.addClass('video-parent');
 
-        const allColors = (filePicker.filesWithColorVariants[path] ?? []);
+        const allColors = cacheGet(colorVariantsCache, path) ?? [];
         const icons = allColors.filter(color => color.includes("url"));
         const colors = allColors.filter(color => !color.includes("url"));
         for (const [index, element] of colors.concat(icons).entries()) {
