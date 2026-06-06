@@ -1,7 +1,7 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
-import { getFilePicker, registerFilePickerOverride } from "./compat/index.js";
+import { IS_V12, getFilePicker, registerFilePickerOverride } from "./compat/index.js";
 
 
 const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -320,6 +320,7 @@ async function rebuildTagSettingsFromCache() {
 
 export default function registerFilePicker() {
 
+    const KinemancerFilePicker = IS_V12 ? buildPickerV1() : buildPickerV2();
     registerFilePickerOverride(KinemancerFilePicker);
 
     Hooks.on('renderFilePicker', filePickerHandler);
@@ -327,95 +328,191 @@ export default function registerFilePicker() {
 
 }
 
-class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implementation {
+// V2 picker (Foundry v13/v14). ApplicationV2 lifecycle, action handler registry,
+// _prepareContext / _onRender / _onSearchFilter overrides.
+function buildPickerV2() {
 
-    deepSearch = "";
-    filtersActive = false;
-    tags = {};
-    filters = {};
-    _searchDebounceHandle = null;
+    return class KinemancerFilePickerV2 extends foundry.applications.apps.FilePicker.implementation {
 
-    static async _onRefreshTags() {
-        invalidateBrowseCache();
-        await rebuildTagSettingsFromCache();
-        return this.render(true);
-    }
+        deepSearch = "";
+        filtersActive = false;
+        tags = {};
+        filters = {};
+        _searchDebounceHandle = null;
 
-    static DEFAULT_OPTIONS = foundry.utils.mergeObject(foundry.applications.apps.FilePicker.DEFAULT_OPTIONS, {
-        actions: {
-            refreshTags: this._onRefreshTags
-        }
-    })
-
-    _getHeaderControls() {
-        return super._getHeaderControls().concat([{
-            action: "refreshTags",
-            icon: "fa-solid fa-refresh",
-            label: "Refresh",
-            visible: game.user.isGM
-        }]);
-    }
-
-    async _prepareContext(options = {}) {
-
-        this.filtersActive = false;
-        this.tags = {};
-
-        const data = await super._prepareContext(options);
-
-        if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
-
-        this.tags = GameSettings.TAGS.get();
-        this.filtersActive = !foundry.utils.isEmpty(this.filters);
-
-        if (this.deepSearch || this.filtersActive) {
-            data.files = [];
+        static async _onRefreshTags() {
+            invalidateBrowseCache();
+            await rebuildTagSettingsFromCache();
+            return this.render(true);
         }
 
-        if (GameSettings.USE_NATIVE_FILEPICKER.get()) {
-            await processNativeContext(data, this);
-        } else {
-            await processCustomContext(data, this);
-        }
-
-        if (this.deepSearch || this.filtersActive) {
-            data.dirs = [];
-        }
-
-        return data;
-    }
-
-    async _onRender(force = false, options = {}) {
-
-        const result = await super._onRender(force, options);
-
-        if (this.result.target.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
-            if (options.preserveSearch) {
-                restoreSearchInput(this, options.location);
+        static DEFAULT_OPTIONS = foundry.utils.mergeObject(foundry.applications.apps.FilePicker.DEFAULT_OPTIONS, {
+            actions: {
+                refreshTags: this._onRefreshTags
             }
-            renderTagRegions(this);
+        })
+
+        _getHeaderControls() {
+            return super._getHeaderControls().concat([{
+                action: "refreshTags",
+                icon: "fa-solid fa-refresh",
+                label: "Refresh",
+                visible: game.user.isGM
+            }]);
         }
 
-        return result;
-    }
+        async _prepareContext(options = {}) {
 
-    _onSearchFilter(event, query, rgx, html) {
-        if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
-            this.deepSearch = "";
-            return super._onSearchFilter(event, query, rgx, html);
+            this.filtersActive = false;
+            this.tags = {};
+
+            const data = await super._prepareContext(options);
+
+            if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
+
+            this.tags = GameSettings.TAGS.get();
+            this.filtersActive = !foundry.utils.isEmpty(this.filters);
+
+            if (this.deepSearch || this.filtersActive) {
+                data.files = [];
+            }
+
+            if (GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                await processNativeContext(data, this);
+            } else {
+                await processCustomContext(data, this);
+            }
+
+            if (this.deepSearch || this.filtersActive) {
+                data.dirs = [];
+            }
+
+            return data;
         }
-        if (this.deepSearch !== query) {
-            this.deepSearch = query;
 
-            const searchElem = $(this.element).find('input[type="search"]');
-            const location = searchElem.prop("selectionStart");
+        async _onRender(force = false, options = {}) {
 
-            clearTimeout(this._searchDebounceHandle);
-            this._searchDebounceHandle = setTimeout(() => {
-                this.render(false, { preserveSearch: true, location });
-            }, SEARCH_DEBOUNCE_MS);
+            const result = await super._onRender(force, options);
+
+            if (this.result.target.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                if (options.preserveSearch) {
+                    restoreSearchInput(this, options.location);
+                }
+                renderTagRegions(this);
+            }
+
+            return result;
         }
-    }
+
+        _onSearchFilter(event, query, rgx, html) {
+            if (!this.result.target.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                this.deepSearch = "";
+                return super._onSearchFilter(event, query, rgx, html);
+            }
+            if (this.deepSearch !== query) {
+                this.deepSearch = query;
+
+                const searchElem = $(this.element).find('input[type="search"]');
+                const location = searchElem.prop("selectionStart");
+
+                clearTimeout(this._searchDebounceHandle);
+                this._searchDebounceHandle = setTimeout(() => {
+                    this.render(false, { preserveSearch: true, location });
+                }, SEARCH_DEBOUNCE_MS);
+            }
+        }
+    };
+}
+
+// V1 picker (Foundry v12). v1 Application lifecycle: defaultOptions getter,
+// getData, _render, activateListeners, _getHeaderButtons, _onSearchFilter.
+// All lifecycle methods delegate to the same module-level helpers as V2.
+function buildPickerV1() {
+
+    return class KinemancerFilePickerV1 extends FilePicker {
+
+        deepSearch = "";
+        filtersActive = false;
+        tags = {};
+        filters = {};
+        _searchDebounceHandle = null;
+
+        _getHeaderButtons() {
+            const buttons = super._getHeaderButtons();
+            if (game.user.isGM) {
+                buttons.unshift({
+                    label: "Refresh",
+                    class: "kinemancer-refresh-tags",
+                    icon: "fa-solid fa-refresh",
+                    onclick: async () => {
+                        invalidateBrowseCache();
+                        await rebuildTagSettingsFromCache();
+                        return this.render(true);
+                    }
+                });
+            }
+            return buttons;
+        }
+
+        async getData(options = {}) {
+
+            this.filtersActive = false;
+            this.tags = {};
+
+            const data = await super.getData(options);
+
+            if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
+
+            this.tags = GameSettings.TAGS.get();
+            this.filtersActive = !foundry.utils.isEmpty(this.filters);
+
+            if (this.deepSearch || this.filtersActive) {
+                data.files = [];
+            }
+
+            if (GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                await processNativeContext(data, this);
+            } else {
+                await processCustomContext(data, this);
+            }
+
+            if (this.deepSearch || this.filtersActive) {
+                data.dirs = [];
+            }
+
+            return data;
+        }
+
+        async _render(force = false, options = {}) {
+
+            await super._render(force, options);
+
+            if (this.result.target?.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                if (options.preserveSearch) {
+                    restoreSearchInput(this, options.location);
+                }
+                renderTagRegions(this);
+            }
+        }
+
+        _onSearchFilter(event, query, rgx, html) {
+            if (!this.result.target?.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
+                this.deepSearch = "";
+                return super._onSearchFilter(event, query, rgx, html);
+            }
+            if (this.deepSearch !== query) {
+                this.deepSearch = query;
+
+                const searchElem = $(this.element).find('input[type="search"]');
+                const location = searchElem.prop("selectionStart");
+
+                clearTimeout(this._searchDebounceHandle);
+                this._searchDebounceHandle = setTimeout(() => {
+                    this.render(false, { preserveSearch: true, location });
+                }, SEARCH_DEBOUNCE_MS);
+            }
+        }
+    };
 }
 
 function filePickerHandler(filePicker, html) {
