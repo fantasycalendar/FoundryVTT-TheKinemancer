@@ -1,4 +1,4 @@
-import { IS_V12 } from "./index.js";
+import { IS_V12 } from "./is-v12.js";
 
 /** Parse an S3 URL into { bucket, keyPrefix }, or null if not an S3 URL. */
 export function parseS3URLCompat(url) {

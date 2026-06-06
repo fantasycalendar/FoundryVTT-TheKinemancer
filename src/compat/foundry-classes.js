@@ -1,4 +1,4 @@
-import { IS_V12 } from "./index.js";
+import { IS_V12 } from "./is-v12.js";
 
 /** Foundry's Tile placeable class. */
 export function getTileClass() {

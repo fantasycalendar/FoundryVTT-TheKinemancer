@@ -4,7 +4,7 @@
  * Foundry namespaces directly.
  */
 
-export const IS_V12 = !foundry.applications?.apps?.FilePicker;
+export { IS_V12 } from "./is-v12.js";
 
 export { getFilePicker, registerFilePickerOverride } from "./file-picker.js";
 export { parseS3URLCompat } from "./s3.js";

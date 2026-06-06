@@ -1,4 +1,4 @@
-import { IS_V12 } from "./index.js";
+import { IS_V12 } from "./is-v12.js";
 
 /** libWrapper registration paths for the prototype methods the module patches. */
 export const LIBWRAPPER_PATHS = IS_V12

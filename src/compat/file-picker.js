@@ -1,4 +1,4 @@
-import { IS_V12 } from "./index.js";
+import { IS_V12 } from "./is-v12.js";
 
 /** The FilePicker class core Foundry uses, for static calls and instantiation. */
 export function getFilePicker() {
