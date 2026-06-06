@@ -1,7 +1,14 @@
 /**
- * Foundry version detection. Lives in its own file so other compat modules can
- * import IS_V12 without going through index.js, which would create a circular
- * import that TDZ-errors when LIBWRAPPER_PATHS evaluates its ternary at load
- * time.
+ * Foundry version detection. Lazy: evaluated on first call, then cached.
+ *
+ * Module-load evaluation is unsafe because our ESM bundle can run before
+ * Foundry's client.mjs has populated foundry.applications. At first call from
+ * the init hook (or later), the namespace is ready.
  */
-export const IS_V12 = !foundry.applications?.apps?.FilePicker;
+
+let _cached = null;
+
+export function isV12() {
+	if (_cached === null) _cached = !foundry.applications?.apps?.FilePicker;
+	return _cached;
+}

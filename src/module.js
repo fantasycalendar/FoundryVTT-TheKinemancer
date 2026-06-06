@@ -7,7 +7,7 @@ import SocketHandler from "./socket.js";
 import * as lib from "./lib/lib.js";
 import Settings from "./settings.js";
 import registerFilePicker from "./filepicker.js";
-import { LIBWRAPPER_PATHS, getTileClass, getVideoHelperClass } from "./compat/index.js";
+import { getLibwrapperPaths, getTileClass, getVideoHelperClass } from "./compat/index.js";
 
 Hooks.once('init', async function () {
 
@@ -67,21 +67,23 @@ Hooks.once('ready', async function () {
 
 function registerLibwrappers() {
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, LIBWRAPPER_PATHS.tileDestroy, function (wrapped) {
+    const paths = getLibwrapperPaths();
+
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.tileDestroy, function (wrapped) {
         if (this.isVideo) {
             StatefulVideo.tearDown(this.document.uuid);
         }
         return wrapped();
     }, "MIXED");
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, LIBWRAPPER_PATHS.tokenDestroy, function (wrapped) {
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.tokenDestroy, function (wrapped) {
         if (this.isVideo) {
             StatefulVideo.tearDown(this.document.uuid);
         }
         return wrapped();
     }, "MIXED");
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, LIBWRAPPER_PATHS.videoHelperPlay, async function (wrapped, video, options) {
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.videoHelperPlay, async function (wrapped, video, options) {
         const videoOptions = { playing: options?.playing ?? true };
         const statefulVideos = StatefulVideo.getAll().values();
         for (const statefulVideo of statefulVideos) {
@@ -107,7 +109,7 @@ function registerLibwrappers() {
     }
 
     if (getTileClass().prototype._refreshVideo) {
-        libWrapper.register(CONSTANTS.MODULE_NAME, LIBWRAPPER_PATHS.tileRefreshVideo, function (wrapped) {
+        libWrapper.register(CONSTANTS.MODULE_NAME, paths.tileRefreshVideo, function (wrapped) {
             const statefulVideo = StatefulVideo.get(this.document.uuid);
             if (!statefulVideo) {
                 return wrapped();

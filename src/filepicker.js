@@ -1,7 +1,7 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
-import { IS_V12, getFilePicker, registerFilePickerOverride } from "./compat/index.js";
+import { isV12, getFilePicker, registerFilePickerOverride } from "./compat/index.js";
 
 
 const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -35,9 +35,7 @@ function invalidateBrowseCache() {
 }
 
 
-// Shared picker helpers: pure-ish functions taking either explicit state
-// (filters, dir) or the picker instance (for this.element and this.filters
-// access). Both V1 and V2 picker classes delegate to these.
+// Shared picker helpers
 
 function dirMatchesFilterFn(filters, dir) {
     return Object.entries(filters).every(([settingsKey, tagFilters]) => {
@@ -95,8 +93,7 @@ async function processFileFn(file, data, results, picker) {
         }
     }
 
-    // Find the color variants. The rich list (with .color/.order/.colorName) is needed
-    // locally for deep-search matching; the flat string list is what filePickerHandler reads.
+
     const colorVariants = results.files.filter(variantFile => {
         return variantFile.includes("__") && variantFile.startsWith(fileWithoutExtension);
     }).map(path => {
@@ -320,16 +317,17 @@ async function rebuildTagSettingsFromCache() {
 
 export default function registerFilePicker() {
 
-    const KinemancerFilePicker = IS_V12 ? buildPickerV1() : buildPickerV2();
-    registerFilePickerOverride(KinemancerFilePicker);
+    if (isV12()) {
+        patchV1FilePicker();
+    } else {
+        registerFilePickerOverride(buildPickerV2());
+    }
 
     Hooks.on('renderFilePicker', filePickerHandler);
     Hooks.on(CONSTANTS.HOOKS.INVALIDATE_FILEPICKER_CACHE, invalidateBrowseCache);
 
 }
 
-// V2 picker (Foundry v13/v14). ApplicationV2 lifecycle, action handler registry,
-// _prepareContext / _onRender / _onSearchFilter overrides.
 function buildPickerV2() {
 
     return class KinemancerFilePickerV2 extends foundry.applications.apps.FilePicker.implementation {
@@ -424,93 +422,88 @@ function buildPickerV2() {
     };
 }
 
-// V1 picker (Foundry v12). v1 Application lifecycle: defaultOptions getter,
-// getData, _render, activateListeners, _getHeaderButtons, _onSearchFilter.
-// All lifecycle methods delegate to the same module-level helpers as V2.
-function buildPickerV1() {
 
-    return class KinemancerFilePickerV1 extends FilePicker {
+function patchV1FilePicker() {
 
-        deepSearch = "";
-        filtersActive = false;
-        tags = {};
-        filters = {};
-        _searchDebounceHandle = null;
+    const originalGetHeaderButtons = FilePicker.prototype._getHeaderButtons;
+    const originalGetData = FilePicker.prototype.getData;
+    const originalRender = FilePicker.prototype._render;
+    const originalSearchFilter = FilePicker.prototype._onSearchFilter;
 
-        _getHeaderButtons() {
-            const buttons = super._getHeaderButtons();
-            if (game.user.isGM) {
-                buttons.unshift({
-                    label: "Refresh",
-                    class: "kinemancer-refresh-tags",
-                    icon: "fa-solid fa-refresh",
-                    onclick: async () => {
-                        invalidateBrowseCache();
-                        await rebuildTagSettingsFromCache();
-                        return this.render(true);
-                    }
-                });
-            }
-            return buttons;
-        }
-
-        async getData(options = {}) {
-
-            this.filtersActive = false;
-            this.tags = {};
-
-            const data = await super.getData(options);
-
-            if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
-
-            this.tags = GameSettings.TAGS.get();
-            this.filtersActive = !foundry.utils.isEmpty(this.filters);
-
-            if (this.deepSearch || this.filtersActive) {
-                data.files = [];
-            }
-
-            if (GameSettings.USE_NATIVE_FILEPICKER.get()) {
-                await processNativeContext(data, this);
-            } else {
-                await processCustomContext(data, this);
-            }
-
-            if (this.deepSearch || this.filtersActive) {
-                data.dirs = [];
-            }
-
-            return data;
-        }
-
-        async _render(force = false, options = {}) {
-
-            await super._render(force, options);
-
-            if (this.result.target?.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
-                if (options.preserveSearch) {
-                    restoreSearchInput(this, options.location);
+    FilePicker.prototype._getHeaderButtons = function () {
+        const buttons = originalGetHeaderButtons.call(this);
+        if (game.user.isGM) {
+            buttons.unshift({
+                label: "Refresh",
+                class: "kinemancer-refresh-tags",
+                icon: "fa-solid fa-refresh",
+                onclick: async () => {
+                    invalidateBrowseCache();
+                    await rebuildTagSettingsFromCache();
+                    return this.render(true);
                 }
-                renderTagRegions(this);
-            }
+            });
+        }
+        return buttons;
+    };
+
+    FilePicker.prototype.getData = async function (options = {}) {
+
+        this.filters ??= {};
+        this.filtersActive = false;
+        this.tags = {};
+
+        const data = await originalGetData.call(this, options);
+
+        if (!data.target.startsWith(CONSTANTS.MODULE_NAME)) return data;
+
+        this.tags = GameSettings.TAGS.get();
+        this.filtersActive = !foundry.utils.isEmpty(this.filters);
+
+        if (this.deepSearch || this.filtersActive) {
+            data.files = [];
         }
 
-        _onSearchFilter(event, query, rgx, html) {
-            if (!this.result.target?.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
-                this.deepSearch = "";
-                return super._onSearchFilter(event, query, rgx, html);
-            }
-            if (this.deepSearch !== query) {
-                this.deepSearch = query;
+        if (GameSettings.USE_NATIVE_FILEPICKER.get()) {
+            await processNativeContext(data, this);
+        } else {
+            await processCustomContext(data, this);
+        }
 
-                const searchElem = $(this.element).find('input[type="search"]');
-                const location = searchElem.prop("selectionStart");
+        if (this.deepSearch || this.filtersActive) {
+            data.dirs = [];
+        }
 
-                clearTimeout(this._searchDebounceHandle);
-                this._searchDebounceHandle = setTimeout(() => {
-                    this.render(false, { preserveSearch: true, location });
-                }, SEARCH_DEBOUNCE_MS);
+        return data;
+    };
+
+    FilePicker.prototype._render = async function (force = false, options = {}) {
+
+        await originalRender.call(this, force, options);
+
+        if (this.result.target?.startsWith(CONSTANTS.MODULE_NAME) && !GameSettings.USE_NATIVE_FILEPICKER.get()) {
+            if (options.preserveSearch) {
+                restoreSearchInput(this, options.location);
             }
+            renderTagRegions(this);
+        }
+    };
+
+    FilePicker.prototype._onSearchFilter = function (event, query, rgx, html) {
+        if (!this.result.target?.startsWith(CONSTANTS.MODULE_NAME) || GameSettings.USE_NATIVE_FILEPICKER.get()) {
+            this.deepSearch = "";
+            return originalSearchFilter.call(this, event, query, rgx, html);
+        }
+        if (this.deepSearch !== query) {
+            this.deepSearch = query;
+
+            const searchElem = $(this.element).find('input[type="search"]');
+            const location = searchElem.prop("selectionStart");
+
+            clearTimeout(this._searchDebounceHandle);
+            this._searchDebounceHandle = setTimeout(() => {
+                this.render(false, { preserveSearch: true, location });
+            }, SEARCH_DEBOUNCE_MS);
         }
     };
 }
@@ -523,7 +516,7 @@ function filePickerHandler(filePicker, html) {
 
     if (!location.startsWith(CONSTANTS.MODULE_NAME)) return;
 
-    html.find('ul.files-list li img').each((idx, imgElem) => {
+    html.find('.files-list li img').each((idx, imgElem) => {
 
         const img = $(imgElem);
         const parent = img.closest('[data-path]');

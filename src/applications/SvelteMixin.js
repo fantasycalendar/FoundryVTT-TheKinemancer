@@ -11,7 +11,7 @@ function SvelteApplicationMixin(Base) {
 			classes: [],
 		};
 
-		/** Root Svelte component (set this in your subclass) */
+		/** Root Svelte component - set this in your subclass */
 		// root
 
 		/** State data tracked by the root component */

@@ -223,119 +223,126 @@ body[data-theme="light"] {
   color: #fff1f1;
 }
 
-#file-picker .video-parent {
-  position: relative;
-  background-color: grey;
-}
+// FilePicker root: v13/v14 sets id "file-picker"; v12 auto-generates id "app-N"
+// but the v1 Application picks up class "filepicker" from defaultOptions.classes.
+// Display mode classes are "thumbs"/"tiles"/"images" on v13/v14 and the "-list"
+// suffixed versions on v12.
+:is(#file-picker, .filepicker) {
 
-#file-picker .kinemancer .tags {
-  gap: 0.15rem;
-}
-
-#file-picker .kinemancer .tag {
-  padding: 1px 3px;
-  background: var(--input-background-color);
-}
-
-#file-picker .video-parent:after {
-  position: absolute;
-  top: calc(50% - 10px);
-  left: calc(50% - 10px);
-
-  font-weight: 900;
-  font-family: 'Font Awesome 7 Pro', 'Font Awesome 6 Pro', 'FontAwesome';
-  content: '\f04b';
-
-  display: block;
-  color: white;
-  text-align: center;
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  text-shadow: 2px 2px 3px #00000090;
-
-  opacity: .8;
-
-  transition: opacity .2s;
-}
-
-#file-picker .thumbs .video-parent:after {
-  left: 18px;
-}
-
-#file-picker .video-parent:hover:after {
-  opacity: 0;
-}
-
-#file-picker .video-parent.-loading:hover:after {
-  opacity: .8;
-  content: '\f021';
-  animation: animation-preview-spin 1.5s linear infinite;
-}
-
-#file-picker .video-preview {
-  box-sizing: border-box;
-  border: 1px solid #000;
-  border-radius: 2px;
-  max-width: 100%;
-  position: relative;
-}
-
-#file-picker .tiles li .video-preview {
-  border: none;
-  margin: 0;
-  object-fit: contain;
-  width: 100%;
-  height: 100%;
-}
-
-#file-picker .images li .video-preview {
-  width: 100%;
-  height: 200px;
-  object-fit: contain;
-  object-position: 50% 50%;
-  border: none;
-}
-
-#file-picker .thumbs .video-preview {
-  flex: 0 0 48px;
-  object-fit: cover;
-  object-position: 50% 50%;
-  margin-right: 10px;
-  border: none;
-}
-
-#file-picker .ats-color-circle {
-  cursor: pointer;
-  width: 15px;
-  height: 15px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  border: 1px solid black;
-
-  &.ats-icon {
-    background-color: #23221d;
+  .video-parent {
+    position: relative;
+    background-color: grey;
   }
-}
 
-#file-picker .ats-variation-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
+  .kinemancer .tags {
+    gap: 0.15rem;
+  }
 
-  img {
-    border: 0;
+  .kinemancer .tag {
+    padding: 1px 3px;
+    background: var(--input-background-color);
+  }
+
+  .video-parent:after {
+    position: absolute;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
+
+    font-weight: 900;
+    font-family: 'Font Awesome 7 Pro', 'Font Awesome 6 Pro', 'FontAwesome';
+    content: '\f04b';
+
+    display: block;
+    color: white;
+    text-align: center;
+    font-size: 20px;
     width: 20px;
     height: 20px;
+    line-height: 20px;
+    text-shadow: 2px 2px 3px #00000090;
+
+    opacity: .8;
+
+    transition: opacity .2s;
+  }
+
+  :is(.thumbs, .thumbs-list) .video-parent:after {
+    left: 18px;
+  }
+
+  .video-parent:hover:after {
+    opacity: 0;
+  }
+
+  .video-parent.-loading:hover:after {
+    opacity: .8;
+    content: '\f021';
+    animation: animation-preview-spin 1.5s linear infinite;
+  }
+
+  .video-preview {
+    box-sizing: border-box;
+    border: 1px solid #000;
+    border-radius: 2px;
+    max-width: 100%;
+    position: relative;
+  }
+
+  :is(.tiles, .tiles-list) li .video-preview {
+    border: none;
+    margin: 0;
+    object-fit: contain;
+    width: 100%;
+    height: 100%;
+  }
+
+  :is(.images, .images-list) li .video-preview {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    object-position: 50% 50%;
+    border: none;
+  }
+
+  :is(.thumbs, .thumbs-list) .video-preview {
+    flex: 0 0 48px;
+    object-fit: cover;
+    object-position: 50% 50%;
+    margin-right: 10px;
+    border: none;
+  }
+
+  .ats-color-circle {
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    border: 1px solid black;
+
+    &.ats-icon {
+      background-color: #23221d;
+    }
+  }
+
+  .ats-variation-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 3px;
+    bottom: 3px;
+
+    img {
+      border: 0;
+      width: 20px;
+      height: 20px;
+    }
   }
 }
 
