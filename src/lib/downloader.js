@@ -5,6 +5,7 @@ import * as lib from "./lib.js";
 import { writable } from "svelte/store";
 import GameSettings from "../settings.js";
 import CONSTANTS from "../constants.js";
+import { getFilePicker } from "../compat/index.js";
 
 class Downloader {
 
@@ -79,7 +80,7 @@ class Downloader {
                     const dirsToCreate = [];
                     for (const dir of dirs) {
                         try {
-                            await foundry.applications.apps.FilePicker.implementation.browse("data", dir);
+                            await getFilePicker().browse("data", dir);
                         } catch {
                             dirsToCreate.push(dir);
                         }
@@ -152,7 +153,7 @@ class Downloader {
             ProgressBar.text = `CREATING DIRECTORIES (0 / ${dirsToCreate.length})`;
 
             for (const dirPath of dirsToCreate) {
-                await foundry.applications.apps.FilePicker.implementation.createDirectory("data", dirPath);
+                await getFilePicker().createDirectory("data", dirPath);
                 const current = ProgressBar.incrementProgress();
                 ProgressBar.text = `Creating directories (${current} / ${dirsToCreate.length})`;
 
@@ -169,7 +170,7 @@ class Downloader {
             const binaryData = await fileData.async("uint8array");
             const file = new File([binaryData], fileName);
             if (currentPromise) await currentPromise;
-            currentPromise = foundry.applications.apps.FilePicker.implementation.upload("data", path, file, {}, { notify: false });
+            currentPromise = getFilePicker().upload("data", path, file, {}, { notify: false });
             const current = ProgressBar.incrementProgress();
             ProgressBar.text = `Saving files (${current} / ${filesToCreate.length})`;
         }

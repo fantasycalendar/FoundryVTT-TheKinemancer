@@ -3,6 +3,7 @@ import * as lib from "./lib/lib.js";
 import { getVideoDimensions } from "./lib/lib.js";
 import SocketHandler from "./socket.js";
 import { get, writable } from "svelte/store";
+import { getTokenClass, getTextureLoader } from "./compat/index.js";
 
 const statefulVideoHudMap = new Map();
 const managedStatefulVideos = new Map();
@@ -510,7 +511,7 @@ export class StatefulVideo {
                                 "height": height * currentRatio
                             });
 
-                            const hud = placeable instanceof foundry.canvas.placeables.Token
+                            const hud = placeable instanceof getTokenClass()
                                 ? canvas.tokens.hud
                                 : canvas.tiles.hud;
                             placeable.control();
@@ -536,7 +537,7 @@ export class StatefulVideo {
                             await placeableDocument.update({
                                 "texture.src": filePath
                             });
-                            const hud = placeable instanceof foundry.canvas.placeables.Token
+                            const hud = placeable instanceof getTokenClass()
                                 ? canvas.tokens.hud
                                 : canvas.tiles.hud;
                             placeable.control();
@@ -570,7 +571,7 @@ export class StatefulVideo {
                 : this.flags.baseFile;
         });
         for (let path of textures) {
-            foundry.canvas.TextureLoader.loader.loadTexture(path).then(texture => {
+            getTextureLoader().loader.loadTexture(path).then(texture => {
                 this.allVariationDurations[path] = texture.resource.source.duration * 1000;
             });
         }

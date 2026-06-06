@@ -5,6 +5,7 @@
     import Downloader from "../../lib/downloader.js";
     import { writable } from "svelte/store";
     import * as lib from "../../lib/lib.js";
+    import { getFilePicker } from "../../compat/index.js";
 
     let step = $state(1);
 
@@ -41,7 +42,7 @@
     function openFile(path) {
         const newPath = path.split("/");
         newPath.pop();
-        new foundry.applications.apps.FilePicker.implementation({
+        new (getFilePicker())({
             type: "imagevideo",
             current: newPath.join("/"),
             displayMode: "tiles"

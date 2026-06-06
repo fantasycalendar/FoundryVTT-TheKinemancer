@@ -1,6 +1,7 @@
 import * as lib from "./lib/lib.js";
 import CONSTANTS from "./constants.js";
 import GameSettings from "./settings.js";
+import { getFilePicker, registerFilePickerOverride } from "./compat/index.js";
 
 
 const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -36,7 +37,7 @@ function invalidateBrowseCache() {
 
 export default function registerFilePicker() {
 
-    CONFIG.ux.FilePicker = KinemancerFilePicker;
+    registerFilePickerOverride(KinemancerFilePicker);
 
     Hooks.on('renderFilePicker', filePickerHandler);
     Hooks.on(CONSTANTS.HOOKS.INVALIDATE_FILEPICKER_CACHE, invalidateBrowseCache);
@@ -111,7 +112,7 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
 
         let results = cacheGet(browseCache, dir);
         if (!results) {
-            results = await foundry.applications.apps.FilePicker.implementation.browse("data", `${dir}/*`, { wildcard: true });
+            results = await getFilePicker().browse("data", `${dir}/*`, { wildcard: true });
             cacheSet(browseCache, dir, results);
         }
 

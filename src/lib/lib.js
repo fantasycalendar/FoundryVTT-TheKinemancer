@@ -1,4 +1,5 @@
 import CONSTANTS from "../constants.js";
+import { getFilePicker, parseS3URLCompat } from "../compat/index.js";
 
 export function isActiveGM(user) {
     return user.active && user.isGM;
@@ -112,7 +113,7 @@ export async function getWildCardFiles(inFile) {
 
     if (/\.s3\./.test(inFile)) {
         source = 's3'
-        const { bucket, keyPrefix } = foundry.applications.apps.FilePicker.implementation.parseS3URL(inFile);
+        const { bucket, keyPrefix } = parseS3URLCompat(inFile);
         if (bucket) {
             browseOptions.bucket = bucket;
             inFile = keyPrefix;
@@ -120,7 +121,7 @@ export async function getWildCardFiles(inFile) {
     }
 
     try {
-        return (await foundry.applications.apps.FilePicker.implementation.browse(source, inFile, browseOptions)).files;
+        return (await getFilePicker().browse(source, inFile, browseOptions)).files;
     } catch {
         return false;
     }
@@ -260,7 +261,7 @@ export function createJsonFile(placeableDocument, inData) {
     const serializedData = JSON.stringify(inData, null, 4);
     const blob = new Blob([serializedData], { type: 'application/json' });
     const file = new File([blob], splitPath.pop());
-    return foundry.applications.apps.FilePicker.implementation.upload("data", splitPath.join('/'), file, {}, { notify: false });
+    return getFilePicker().upload("data", splitPath.join('/'), file, {}, { notify: false });
 }
 
 
