@@ -421,6 +421,7 @@ function buildPickerV2() {
                     restoreSearchInput(this, options.location);
                 }
                 renderTagRegions(this);
+                this.setPosition({ height: "auto" });
             }
 
             return result;
@@ -516,6 +517,7 @@ function patchV1FilePicker() {
                 restoreSearchInput(this, options.location);
             }
             renderTagRegions(this);
+            this.setPosition({ height: "auto" });
         }
     };
 
