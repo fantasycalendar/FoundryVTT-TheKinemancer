@@ -121,7 +121,7 @@ export async function getWildCardFiles(inFile) {
 
     try {
         return (await foundry.applications.apps.FilePicker.implementation.browse(source, inFile, browseOptions)).files;
-    } catch (err) {
+    } catch {
         return false;
     }
 }

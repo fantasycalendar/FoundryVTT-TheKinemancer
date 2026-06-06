@@ -80,7 +80,7 @@ class Downloader {
                     for (const dir of dirs) {
                         try {
                             await foundry.applications.apps.FilePicker.implementation.browse("data", dir);
-                        } catch (err) {
+                        } catch {
                             dirsToCreate.push(dir);
                         }
                     }

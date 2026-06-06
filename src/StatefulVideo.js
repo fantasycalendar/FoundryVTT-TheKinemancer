@@ -228,7 +228,7 @@ export class StatefulVideo {
                 }
                 placeableDoc.update(jsonData);
             })
-            .catch(err => {
+            .catch(() => {
             });
     }
 
@@ -624,7 +624,6 @@ export class StatefulVideo {
     }
 
     refreshVideo() {
-        this.texture = this.texture;
         this.video = this.texture.baseTexture.resource.source;
         this.still = false;
         this.playing = false;
@@ -681,11 +680,10 @@ export class StatefulVideo {
             }
             statefulVideo.still = false;
             statefulVideo.playing = false;
-            if (!foundry.utils.hasProperty(changes, "texture.src")) {
+            if (!foundry.utils.hasProperty(changes, "texture.src")
+                || statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
                 statefulVideo.play()
             }
-        } else if (foundry.utils.hasProperty(changes, CONSTANTS.CURRENT_STATE_FLAG) && statefulVideo.flags.currentState.behavior === CONSTANTS.BEHAVIORS.STILL_HIDDEN) {
-            statefulVideo.play()
         }
     }
 
@@ -964,7 +962,7 @@ export class StatefulVideo {
             loopDuration = (this.duration - startTime);
         }
 
-        const offsetLoopTime = ((this.offset ?? 0) % loopDuration) ?? 0;
+        const offsetLoopTime = (this.offset ?? 0) % loopDuration;
         const offsetStartTime = (startTime + offsetLoopTime);
 
         const noRandomTimers = foundry.utils.isEmpty(this.randomTimers);
@@ -1128,6 +1126,7 @@ class Flags {
             case CONSTANTS.NUMBER_TYPES.SECONDS:
                 return 1000;
             case CONSTANTS.NUMBER_TYPES.FRAMES:
+            default:
                 return 1000 / this.fps;
         }
     }
@@ -1222,20 +1221,23 @@ class Flags {
             case CONSTANTS.BEHAVIORS.RANDOM:
                 return this.currentStateIndex;
 
-            case CONSTANTS.BEHAVIORS.RANDOM_IF:
+            case CONSTANTS.BEHAVIORS.RANDOM_IF: {
                 const nextSpecific = this.getStateById(state.randomState);
                 return nextSpecific >= 0 ? nextSpecific : defaultIndex;
+            }
 
-            case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC:
+            case CONSTANTS.BEHAVIORS.ONCE_SPECIFIC: {
                 const nextIndex = this.getStateById(state.nextState);
                 return nextIndex >= 0 ? nextIndex : defaultIndex;
+            }
 
-            case CONSTANTS.BEHAVIORS.RANDOM_STATE:
+            case CONSTANTS.BEHAVIORS.RANDOM_STATE: {
                 const nextStates = state.randomState.map(id => this.states.findIndex(s => s.id === id)).filter(i => i > -1);
                 if (nextStates.indexOf(this.previousStateIndex) > -1) {
                     nextStates.splice(nextStates.indexOf(this.previousStateIndex), 1);
                 }
                 return nextStates.length ? lib.randomArrayElement(nextStates) : defaultIndex;
+            }
         }
 
         return index;

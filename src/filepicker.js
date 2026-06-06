@@ -163,11 +163,6 @@ class KinemancerFilePicker extends foundry.applications.apps.FilePicker.implemen
         });
         cacheSet(colorVariantsCache, file, lib.uniqueArrayElements(colorVariants.map(config => config.color)));
 
-        // Find the internal variants
-        const internalVariants = results.files.filter(variantFile => {
-            return variantFile.includes("_%5") && variantFile.startsWith(fileWithoutExtension);
-        });
-
         if (this.deepSearch) {
             const parts = file.split("/");
             const fileName = parts.pop().split(".")[0].toLowerCase();
@@ -453,7 +448,7 @@ function filePickerHandler(filePicker, html) {
             playTimeout = setTimeout(() => {
                 videoElem.currentTime = 0;
                 videoElem.play().catch(e => console.error(e));
-            }, !!videoElem.src ? 0 : 750);
+            }, videoElem.src ? 0 : 750);
         }).on("mouseleave", () => {
             parent.find(".ats-color-circle").show();
             clearTimeout(playTimeout);

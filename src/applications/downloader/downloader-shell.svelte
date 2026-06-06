@@ -113,7 +113,7 @@
         <details>
             <summary>Click to show all downloaded files</summary>
             <ul>
-                {#each $downloadedPaths as path}
+                {#each $downloadedPaths as path (path)}
                     <li><button type="button" class="link-button" onclick={() => openFile(path)}>{path}</button></li>
                 {/each}
             </ul>
