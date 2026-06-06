@@ -1,45 +1,41 @@
 {
-  "id": "the-kinemancer",
-  "title": "The Kinemancer",
-  "description": "<p>Bring life to your VTT Games with animated assets for tiles, overlays, tokens and more!</p><p style=\"margin-bottom:0.5rem;\"><a target=\"_blank\" href=\"https://www.thekinemancer.com/\">Animated Asset Packs</a> - <a target=\"_blank\" href=\"https://www.thekinemancer.com/faq/\">FAQ</a> - <a target=\"_blank\" href=\"https://discord.gg/zhaYaj5ejg\">Discord</a></p>",
-  "version": "1.0.0",
-  "library": false,
-  "compatibility": {
-    "minimum": 12,
-    "verified": 14
-  },
-  "authors": [
-    {
-      "name": "The Kinemancer",
-      "url": "https://www.thekinemancer.com/"
-    },
-    {
-      "name": "Fantasy Computerworks",
-      "url": "https://github.com/fantasycalendar"
-    }
-  ],
-  "esmodules": [
-    "./dist/the-kinemancer.js"
-  ],
-  "styles": [
-    "./dist/the-kinemancer.css"
-  ],
-  "relationships": {
-    "requires": [
-      {
-        "id": "lib-wrapper",
-        "type": "module",
-        "compatibility": {
-          "verified": "1.13.2.0"
-        }
-      }
-    ]
-  },
-  "socket": true,
-  "languages": [],
-  "url": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer",
-  "manifest": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/manifest.json",
-  "download": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/module.zip",
-  "readme": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/blob/master/README.md",
-  "bugs": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/issues"
+	"id": "the-kinemancer",
+	"title": "The Kinemancer",
+	"description": "<p>Bring life to your VTT Games with animated assets for tiles, overlays, tokens and more!</p><p style=\"margin-bottom:0.5rem;\"><a target=\"_blank\" href=\"https://www.thekinemancer.com/\">Animated Asset Packs</a> - <a target=\"_blank\" href=\"https://www.thekinemancer.com/faq/\">FAQ</a> - <a target=\"_blank\" href=\"https://discord.gg/zhaYaj5ejg\">Discord</a></p>",
+	"version": "1.0.0",
+	"library": false,
+	"compatibility": {
+		"minimum": 12,
+		"verified": 14
+	},
+	"authors": [
+		{
+			"name": "The Kinemancer",
+			"url": "https://www.thekinemancer.com/"
+		},
+		{
+			"name": "Fantasy Computerworks",
+			"url": "https://github.com/fantasycalendar"
+		}
+	],
+	"esmodules": ["./dist/the-kinemancer.js"],
+	"styles": ["./dist/the-kinemancer.css"],
+	"relationships": {
+		"requires": [
+			{
+				"id": "lib-wrapper",
+				"type": "module",
+				"compatibility": {
+					"verified": "1.13.2.0"
+				}
+			}
+		]
+	},
+	"socket": true,
+	"languages": [],
+	"url": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer",
+	"manifest": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/manifest.json",
+	"download": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/releases/latest/download/module.zip",
+	"readme": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/blob/master/README.md",
+	"bugs": "https://github.com/fantasycalendar/FoundryVTT-TheKinemancer/issues"
 }

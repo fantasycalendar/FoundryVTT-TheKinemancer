@@ -1,7 +1,6 @@
 import { get, writable } from "svelte/store";
 
 class ProgressBarStore {
-
 	constructor() {
 		this.percentStore = writable(1);
 		this.textStore = writable("");
@@ -36,7 +35,6 @@ class ProgressBarStore {
 	get text() {
 		return get(this.textStore);
 	}
-
 }
 
 const ProgressBar = new ProgressBarStore();

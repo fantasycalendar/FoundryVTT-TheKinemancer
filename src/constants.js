@@ -31,12 +31,12 @@ const CONSTANTS = {
 		MILLISECONDS: "milliseconds",
 		SECONDS: "seconds"
 	}
-}
+};
 
 CONSTANTS.HOOKS = {
 	RENDER_UI: `${CONSTANTS.MODULE_NAME}.renderUI`,
-	INVALIDATE_FILEPICKER_CACHE: `${CONSTANTS.MODULE_NAME}.invalidateFilepickerCache`,
-}
+	INVALIDATE_FILEPICKER_CACHE: `${CONSTANTS.MODULE_NAME}.invalidateFilepickerCache`
+};
 
 CONSTANTS.SOCKET_NAME = `module.${CONSTANTS.MODULE_NAME}`;
 CONSTANTS.MODULE_LOCATION = `modules/${CONSTANTS.MODULE_NAME}/`;
@@ -57,8 +57,8 @@ CONSTANTS.FLAG_KEYS = {
 	TIME_PERIODS: "time_periods",
 	CATEGORIES: "categories",
 	TAGS: "tags",
-	DELEGATED_STATEFUL_VIDEOS: "delegatedStatefulVideos",
-}
+	DELEGATED_STATEFUL_VIDEOS: "delegatedStatefulVideos"
+};
 
 CONSTANTS.STATE_FLAGS = {
 	id: null,
@@ -75,8 +75,8 @@ CONSTANTS.STATE_FLAGS = {
 	randomEnd: null,
 	asset_types: null,
 	time_periods: null,
-	categories: null,
-}
+	categories: null
+};
 
 CONSTANTS.FLAGS = `flags.${CONSTANTS.MODULE_NAME}`;
 CONSTANTS.BASE_FILE_FLAG = `flags.${CONSTANTS.MODULE_NAME}.${CONSTANTS.FLAG_KEYS.BASE_FILE}`;
@@ -107,8 +107,8 @@ CONSTANTS.TRANSLATED_BEHAVIORS = {
 	[CONSTANTS.BEHAVIORS.ONCE_SPECIFIC]: "Once, then specific state",
 	[CONSTANTS.BEHAVIORS.RANDOM]: "Random",
 	[CONSTANTS.BEHAVIORS.RANDOM_IF]: "Random if",
-	[CONSTANTS.BEHAVIORS.RANDOM_STATE]: "Random state",
-}
+	[CONSTANTS.BEHAVIORS.RANDOM_STATE]: "Random state"
+};
 
 CONSTANTS.BEHAVIOR_COLOR = {
 	[CONSTANTS.BEHAVIORS.STILL]: "rgb(125, 125, 125)",
@@ -121,67 +121,67 @@ CONSTANTS.BEHAVIOR_COLOR = {
 	[CONSTANTS.BEHAVIORS.ONCE_STILL]: "rgb(183,32,32)",
 	[CONSTANTS.BEHAVIORS.RANDOM]: "rgb(166,70,234)",
 	[CONSTANTS.BEHAVIORS.RANDOM_IF]: "rgb(166,70,234)",
-	[CONSTANTS.BEHAVIORS.RANDOM_STATE]: "rgb(166,70,234)",
-}
+	[CONSTANTS.BEHAVIORS.RANDOM_STATE]: "rgb(166,70,234)"
+};
 
 CONSTANTS.COLOR_CODE = {
-	"none": "background: url('modules/the-kinemancer/assets/color-original.svg');",
-	"night": "background: url('modules/the-kinemancer/assets/color-night.svg');",
-	"other": "background: url('modules/the-kinemancer/assets/color-other.svg');",
-	"day": "background: url('modules/the-kinemancer/assets/color-day.svg');",
-	"spring": "background: url('modules/the-kinemancer/assets/color-spring.svg');",
-	"summer": "background: url('modules/the-kinemancer/assets/color-summer.svg');",
-	"fall": "background: url('modules/the-kinemancer/assets/color-fall.svg');",
-	"winter": "background: url('modules/the-kinemancer/assets/color-winter.svg');",
-	"frozen": "background: url('modules/the-kinemancer/assets/color-winter.svg');",
-	"fireflies": "background: url('modules/the-kinemancer/assets/color-fireflies.svg');",
-	"blood": "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
-	"wounded": "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
-	"massacre": "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
-	"fae": "background: url('modules/the-kinemancer/assets/color-fae.svg');",
-	"fire": "background: url('modules/the-kinemancer/assets/color-fire.svg');",
-	"burning": "background: url('modules/the-kinemancer/assets/color-fire.svg');",
-	"damaged": "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
-	"old": "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
-	"cracked": "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
-	"rusty": "background: url('modules/the-kinemancer/assets/color-rusty.svg');",
-	"dirty": "background: url('modules/the-kinemancer/assets/color-dirty.svg');",
-	"blue": "background-color: #0085fa;",
+	none: "background: url('modules/the-kinemancer/assets/color-original.svg');",
+	night: "background: url('modules/the-kinemancer/assets/color-night.svg');",
+	other: "background: url('modules/the-kinemancer/assets/color-other.svg');",
+	day: "background: url('modules/the-kinemancer/assets/color-day.svg');",
+	spring: "background: url('modules/the-kinemancer/assets/color-spring.svg');",
+	summer: "background: url('modules/the-kinemancer/assets/color-summer.svg');",
+	fall: "background: url('modules/the-kinemancer/assets/color-fall.svg');",
+	winter: "background: url('modules/the-kinemancer/assets/color-winter.svg');",
+	frozen: "background: url('modules/the-kinemancer/assets/color-winter.svg');",
+	fireflies: "background: url('modules/the-kinemancer/assets/color-fireflies.svg');",
+	blood: "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
+	wounded: "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
+	massacre: "background: url('modules/the-kinemancer/assets/color-massacre.svg');",
+	fae: "background: url('modules/the-kinemancer/assets/color-fae.svg');",
+	fire: "background: url('modules/the-kinemancer/assets/color-fire.svg');",
+	burning: "background: url('modules/the-kinemancer/assets/color-fire.svg');",
+	damaged: "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
+	old: "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
+	cracked: "background: url('modules/the-kinemancer/assets/color-damaged.svg');",
+	rusty: "background: url('modules/the-kinemancer/assets/color-rusty.svg');",
+	dirty: "background: url('modules/the-kinemancer/assets/color-dirty.svg');",
+	blue: "background-color: #0085fa;",
 	"blue dark": "background-color: #0037fa;",
 	"blue light": "background-color: #1ad7ff;",
-	"brown": "background-color: #a2633f;",
+	brown: "background-color: #a2633f;",
 	"brown dark": "background-color: #68422c;",
 	"brown light": "background-color: #c8a384;",
-	"green": "background-color: #12ff05;",
+	green: "background-color: #12ff05;",
 	"green dark": "background-color: #00944b;",
 	"green light": "background-color: #86ff6b;",
 	"green yellow": "background-color: #bbff0f;",
-	"grey": "background-color: #7d7d7d;",
+	grey: "background-color: #7d7d7d;",
 	"grey dark": "background-color: #4f4f4f;",
 	"grey light": "background-color: #c2c2c2;",
-	"pink": "background-color: #ff57f4;",
+	pink: "background-color: #ff57f4;",
 	"pink dark": "background-color: #bd00a8;",
 	"pink light": "background-color: #ffb3fa;",
-	"purple": "background-color: #cf57ff;",
+	purple: "background-color: #cf57ff;",
 	"purple dark": "background-color: #8a00c2;",
 	"purple light": "background-color: #e9b3ff;",
-	"orange": "background-color: #ff9a00;",
+	orange: "background-color: #ff9a00;",
 	"orange dark": "background-color: #db6000;",
 	"orange light": "background-color: #ffc46b;",
-	"red": "background-color: #ff4c47;",
+	red: "background-color: #ff4c47;",
 	"red dark": "background-color: #c70500;",
 	"red light": "background-color: #ff8d8a;",
-	"yellow": "background-color: #fff633;",
+	yellow: "background-color: #fff633;",
 	"yellow dark": "background-color: #e6db00;",
 	"yellow light": "background-color: #fffa8a;",
-	"gold": "background-color: #d4af37;",
-	"white": "background-color: #ffffff;",
-	"black": "background-color: #000000;",
-	"dark": "background: url('modules/the-kinemancer/assets/color-dark.svg');",
-	"light": "background: url('modules/the-kinemancer/assets/color-light.svg');",
-	"warm": "background: url('modules/the-kinemancer/assets/color-warm.svg');",
-	"cold": "background: url('modules/the-kinemancer/assets/color-cold.svg');",
-	"multicolor": `background: linear-gradient(
+	gold: "background-color: #d4af37;",
+	white: "background-color: #ffffff;",
+	black: "background-color: #000000;",
+	dark: "background: url('modules/the-kinemancer/assets/color-dark.svg');",
+	light: "background: url('modules/the-kinemancer/assets/color-light.svg');",
+	warm: "background: url('modules/the-kinemancer/assets/color-warm.svg');",
+	cold: "background: url('modules/the-kinemancer/assets/color-cold.svg');",
+	multicolor: `background: linear-gradient(
       90deg,
       rgba(255, 0, 0, 1) 0%,
       rgba(255, 154, 0, 1) 10%,
@@ -194,81 +194,77 @@ CONSTANTS.COLOR_CODE = {
       rgba(186, 12, 248, 1) 80%,
       rgba(251, 7, 217, 1) 90%,
       rgba(255, 0, 0, 1) 100%
-  );`,
-}
+  );`
+};
 
 CONSTANTS.COLOR_NAME = {
-	"none": "Original",
+	none: "Original",
 
-	"day": "Day",
-	"night": "Night",
+	day: "Day",
+	night: "Night",
 
-	"spring": "Spring",
-	"summer": "Summer",
-	"fall": "Fall",
-	"winter": "Winter",
+	spring: "Spring",
+	summer: "Summer",
+	fall: "Fall",
+	winter: "Winter",
 
-	"light": "Light",
-	"dark": "Dark",
-	"cold": "Cold",
-	"warm": "Warm",
+	light: "Light",
+	dark: "Dark",
+	cold: "Cold",
+	warm: "Warm",
 
-	"blood": "Blood",
-	"burning": "Burning",
-	"cracked": "Cracked",
-	"damaged": "Damaged",
-	"dirty": "Dirty",
-	"fae": "Fae",
-	"fire": "Fire",
-	"fireflies": "Fireflies",
-	"frozen": "Frozen",
-	"massacre": "Massacre",
-	"old": "Old",
-	"rusty": "Rusty",
-	"wounded": "Wounded",
+	blood: "Blood",
+	burning: "Burning",
+	cracked: "Cracked",
+	damaged: "Damaged",
+	dirty: "Dirty",
+	fae: "Fae",
+	fire: "Fire",
+	fireflies: "Fireflies",
+	frozen: "Frozen",
+	massacre: "Massacre",
+	old: "Old",
+	rusty: "Rusty",
+	wounded: "Wounded",
 
-	"blue": "Blue",
+	blue: "Blue",
 	"blue dark": "Dark Blue",
 	"blue light": "Light Blue",
-	"brown": "Brown",
+	brown: "Brown",
 	"brown dark": "Dark Brown",
 	"brown light": "Light Brown",
-	"green": "Green",
+	green: "Green",
 	"green dark": "Dark Green",
 	"green light": "Light Green",
 	"green yellow": "Yellow Green",
-	"grey": "Grey",
+	grey: "Grey",
 	"grey dark": "Dark Grey",
 	"grey light": "Light Grey",
-	"orange": "Orange",
+	orange: "Orange",
 	"orange dark": "Dark Orange",
 	"orange light": "Light Orange",
-	"pink": "Pink",
+	pink: "Pink",
 	"pink dark": "Dark Pink",
 	"pink light": "Light Pink",
-	"purple": "Purple",
+	purple: "Purple",
 	"purple dark": "Dark Purple",
 	"purple light": "Light Purple",
-	"red": "Red",
+	red: "Red",
 	"red dark": "Dark Red",
 	"red light": "Light Red",
-	"yellow": "Yellow",
+	yellow: "Yellow",
 	"yellow dark": "Dark Yellow",
 	"yellow light": "Light Yellow",
-	"white": "White",
-	"black": "Black",
-	"multicolor": "Multicolor",
-}
+	white: "White",
+	black: "Black",
+	multicolor: "Multicolor"
+};
 
-CONSTANTS.COLOR_ORDER = Object.keys(CONSTANTS.COLOR_NAME)
+CONSTANTS.COLOR_ORDER = Object.keys(CONSTANTS.COLOR_NAME);
 
 CONSTANTS.TAG_ORDER = {
-	[CONSTANTS.FLAG_KEYS.TIME_PERIODS]: [
-		"all", "medieval", "modern", "contemporary", "futuristic"
-	],
-	[CONSTANTS.FLAG_KEYS.ASSET_TYPES]: [
-		"front-view", "top-view"
-	]
-}
+	[CONSTANTS.FLAG_KEYS.TIME_PERIODS]: ["all", "medieval", "modern", "contemporary", "futuristic"],
+	[CONSTANTS.FLAG_KEYS.ASSET_TYPES]: ["front-view", "top-view"]
+};
 
 export default CONSTANTS;

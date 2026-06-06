@@ -2,16 +2,15 @@ import { SvelteApplicationMixin } from "../SvelteMixin.js";
 import DownloaderShell from "./downloader-shell.svelte";
 
 export default class DownloaderApp extends SvelteApplicationMixin(foundry.applications.api.ApplicationV2) {
-
 	static DEFAULT_OPTIONS = {
 		position: {
 			width: 400,
-			height: "auto",
+			height: "auto"
 		},
 		window: {
 			title: "The Kinemancer Downloader",
-			resizable: false,
-		},
+			resizable: false
+		}
 	};
 
 	root = DownloaderShell;

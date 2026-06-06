@@ -47,19 +47,12 @@ const foundryGlobals = {
 
 	// Bundled vendor libs the asset-pack downloader pulls onto window
 	JSZip: "readonly",
-	JSZipUtils: "readonly",
+	JSZipUtils: "readonly"
 };
 
 export default [
 	{
-		ignores: [
-			"dist/**",
-			"node_modules/**",
-			"assets/**",
-			"lang/**",
-			"packs/**",
-			"*.min.js",
-		],
+		ignores: ["dist/**", "node_modules/**", "assets/**", "lang/**", "packs/**", "*.min.js"]
 	},
 
 	js.configs.recommended,
@@ -70,13 +63,13 @@ export default [
 			sourceType: "module",
 			globals: {
 				...globals.browser,
-				...foundryGlobals,
-			},
+				...foundryGlobals
+			}
 		},
 		rules: {
 			"no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
-			"no-empty": ["error", { allowEmptyCatch: true }],
-		},
+			"no-empty": ["error", { allowEmptyCatch: true }]
+		}
 	},
 
 	{
@@ -84,9 +77,9 @@ export default [
 		files: ["vite.config.{js,mjs,cjs}", "eslint.config.{js,mjs,cjs}"],
 		languageOptions: {
 			globals: {
-				...globals.node,
-			},
-		},
+				...globals.node
+			}
+		}
 	},
 
 	...sveltePlugin.configs["flat/recommended"],
@@ -99,8 +92,8 @@ export default [
 			sourceType: "module",
 			globals: {
 				...globals.browser,
-				...foundryGlobals,
-			},
-		},
-	},
+				...foundryGlobals
+			}
+		}
+	}
 ];

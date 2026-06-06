@@ -4,15 +4,15 @@ import { isV12 } from "./is-v12.js";
 export function getLibwrapperPaths() {
 	return isV12()
 		? {
-			tileDestroy: "Tile.prototype._destroy",
-			tileRefreshVideo: "Tile.prototype._refreshVideo",
-			tokenDestroy: "Token.prototype._destroy",
-			videoHelperPlay: "VideoHelper.prototype.play"
-		}
+				tileDestroy: "Tile.prototype._destroy",
+				tileRefreshVideo: "Tile.prototype._refreshVideo",
+				tokenDestroy: "Token.prototype._destroy",
+				videoHelperPlay: "VideoHelper.prototype.play"
+			}
 		: {
-			tileDestroy: "foundry.canvas.placeables.Tile.prototype._destroy",
-			tileRefreshVideo: "foundry.canvas.placeables.Tile.prototype._refreshVideo",
-			tokenDestroy: "foundry.canvas.placeables.Token.prototype._destroy",
-			videoHelperPlay: "foundry.helpers.media.VideoHelper.prototype.play"
-		};
+				tileDestroy: "foundry.canvas.placeables.Tile.prototype._destroy",
+				tileRefreshVideo: "foundry.canvas.placeables.Tile.prototype._refreshVideo",
+				tokenDestroy: "foundry.canvas.placeables.Token.prototype._destroy",
+				videoHelperPlay: "foundry.helpers.media.VideoHelper.prototype.play"
+			};
 }

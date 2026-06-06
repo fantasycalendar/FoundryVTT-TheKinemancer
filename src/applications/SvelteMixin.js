@@ -1,4 +1,4 @@
-import { mount, unmount } from 'svelte';
+import { mount, unmount } from "svelte";
 import { writable } from "svelte/store";
 
 /**
@@ -8,7 +8,7 @@ import { writable } from "svelte/store";
 function SvelteApplicationMixin(Base) {
 	class SvelteApplication extends Base {
 		static DEFAULT_OPTIONS = {
-			classes: [],
+			classes: []
 		};
 
 		/** Root Svelte component - set this in your subclass */
@@ -49,7 +49,7 @@ function SvelteApplicationMixin(Base) {
 				...result,
 				...options,
 				state: this.$state,
-				foundryApp: this,
+				foundryApp: this
 			});
 		}
 
@@ -61,14 +61,10 @@ function SvelteApplicationMixin(Base) {
 		static getActiveApp() {
 			const app_v1s = Object.values(ui.windows);
 			let all_apps = app_v1s.concat(
-				foundry?.applications?.instances
-					? Array.from(foundry?.applications?.instances.values())
-					: []
-			)
+				foundry?.applications?.instances ? Array.from(foundry?.applications?.instances.values()) : []
+			);
 			return all_apps.find((app) => {
-				return (
-					app instanceof this && app.state > Application.RENDER_STATES.CLOSED
-				);
+				return app instanceof this && app.state > Application.RENDER_STATES.CLOSED;
 			});
 		}
 
