@@ -105,7 +105,7 @@ function registerLibwrappers() {
         interactions.forEach(event => document.addEventListener(event, firstGestureCallback, { once: true }));
     }
 
-    if (Tile.prototype._refreshVideo) {
+    if (foundry.canvas.placeables.Tile.prototype._refreshVideo) {
         libWrapper.register(CONSTANTS.MODULE_NAME, 'foundry.canvas.placeables.Tile.prototype._refreshVideo', function (wrapped) {
             const statefulVideo = StatefulVideo.get(this.document.uuid);
             if (!statefulVideo) {

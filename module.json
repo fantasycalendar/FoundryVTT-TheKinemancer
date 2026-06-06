@@ -6,8 +6,7 @@
   "library": false,
   "compatibility": {
     "minimum": 13,
-    "verified": 13,
-    "maximum": 13
+    "verified": 14
   },
   "authors": [
     {
@@ -29,7 +28,10 @@
     "requires": [
       {
         "id": "lib-wrapper",
-        "type": "module"
+        "type": "module",
+        "compatibility": {
+          "verified": "1.13.2.0"
+        }
       }
     ]
   },
