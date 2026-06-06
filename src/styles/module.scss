@@ -238,9 +238,15 @@ body[data-theme="light"] {
     gap: 0.15rem;
   }
 
+  // Pill style for tag chips. v13/v14 derive this from #file-picker .subheader
+  // .tag; v12 has no equivalent so we declare it ourselves. Scoped to .kinemancer
+  // to avoid restyling Foundry's own favorites tags.
   .kinemancer .tag {
-    padding: 1px 3px;
-    background: var(--input-background-color);
+    background: none;
+    border: 1px solid var(--color-border, #999);
+    border-radius: 4px;
+    padding: 1px 4px;
+    flex: none;
   }
 
   .video-parent:after {
