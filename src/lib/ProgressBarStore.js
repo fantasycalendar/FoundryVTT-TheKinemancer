@@ -1,21 +1,7 @@
 import { get, writable } from "svelte/store";
-import { propertyStore } from '#runtime/svelte/store/writable-derived';
 
 class ProgressBarStore {
-
-	#derived = {
-		percent: 1,
-		text: ""
-	}
-
-	#stores;
-
 	constructor() {
-		const derivedWritable = writable(this.#derived);
-		this.#stores = {
-			bonus: propertyStore(derivedWritable, "bonus"),
-			subSkills: propertyStore(derivedWritable, "subSkills"),
-		};
 		this.percentStore = writable(1);
 		this.textStore = writable("");
 		this._current = 0;
@@ -49,7 +35,6 @@ class ProgressBarStore {
 	get text() {
 		return get(this.textStore);
 	}
-
 }
 
 const ProgressBar = new ProgressBarStore();

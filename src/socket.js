@@ -2,14 +2,13 @@ import CONSTANTS from "./constants.js";
 import { StatefulVideo } from "./StatefulVideo.js";
 
 export default class SocketHandler {
-
 	static UPDATE_PLACEABLE_DOCUMENT = "update-placeable-document";
 	static REPLAY_CURRENT_STATE = "replay-current-state";
 
 	static handlers = {
 		[this.UPDATE_PLACEABLE_DOCUMENT]: this._updatePlaceableDocument,
-		[this.REPLAY_CURRENT_STATE]: this._replayCurrentState,
-	}
+		[this.REPLAY_CURRENT_STATE]: this._replayCurrentState
+	};
 
 	static initialize() {
 		game.socket.on(CONSTANTS.SOCKET_NAME, (data) => {
@@ -40,5 +39,4 @@ export default class SocketHandler {
 		if (!stateful) return;
 		stateful.replayCurrentState();
 	}
-
 }

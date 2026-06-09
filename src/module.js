@@ -7,6 +7,7 @@ import SocketHandler from "./socket.js";
 import * as lib from "./lib/lib.js";
 import Settings from "./settings.js";
 import registerFilePicker from "./filepicker.js";
+import { getLibwrapperPaths, getTileClass, getVideoHelperClass } from "./compat/index.js";
 
 Hooks.once('init', async function () {
 
@@ -66,21 +67,23 @@ Hooks.once('ready', async function () {
 
 function registerLibwrappers() {
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, 'foundry.canvas.placeables.Tile.prototype._destroy', function (wrapped) {
+    const paths = getLibwrapperPaths();
+
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.tileDestroy, function (wrapped) {
         if (this.isVideo) {
             StatefulVideo.tearDown(this.document.uuid);
         }
         return wrapped();
     }, "MIXED");
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, 'foundry.canvas.placeables.Token.prototype._destroy', function (wrapped) {
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.tokenDestroy, function (wrapped) {
         if (this.isVideo) {
             StatefulVideo.tearDown(this.document.uuid);
         }
         return wrapped();
     }, "MIXED");
 
-    libWrapper.register(CONSTANTS.MODULE_NAME, 'foundry.helpers.media.VideoHelper.prototype.play', async function (wrapped, video, options) {
+    libWrapper.register(CONSTANTS.MODULE_NAME, paths.videoHelperPlay, async function (wrapped, video, options) {
         const videoOptions = { playing: options?.playing ?? true };
         const statefulVideos = StatefulVideo.getAll().values();
         for (const statefulVideo of statefulVideos) {
@@ -97,7 +100,7 @@ function registerLibwrappers() {
         return wrapped(video, options);
     }, "MIXED");
 
-    if (!foundry.helpers.media.VideoHelper.locked) {
+    if (!getVideoHelperClass().locked) {
         const firstGestureCallback = () => {
             Hooks.callAll("canvasFirstUserGesture")
         };
@@ -105,8 +108,8 @@ function registerLibwrappers() {
         interactions.forEach(event => document.addEventListener(event, firstGestureCallback, { once: true }));
     }
 
-    if (Tile.prototype._refreshVideo) {
-        libWrapper.register(CONSTANTS.MODULE_NAME, 'foundry.canvas.placeables.Tile.prototype._refreshVideo', function (wrapped) {
+    if (getTileClass().prototype._refreshVideo) {
+        libWrapper.register(CONSTANTS.MODULE_NAME, paths.tileRefreshVideo, function (wrapped) {
             const statefulVideo = StatefulVideo.get(this.document.uuid);
             if (!statefulVideo) {
                 return wrapped();
